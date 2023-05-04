@@ -1,20 +1,104 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import React from 'react';
+import { View, StyleSheet } from 'react-native';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { NavigationContainer } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
+import Workout from './screens/Workout';
+import Nutrition from './screens/Nutrition';
+import ChatScreen from './screens/Chat';
+import Tracking from './screens/Tracking';
+import Settings from './screens/Settings';
 
-export default function App() {
+const Tab = createBottomTabNavigator();
+
+function MyTabs() {
   return (
-    <View style={styles.container}>
-      <Text>Open up App.js to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <NavigationContainer>
+      <Tab.Navigator
+        screenOptions={{
+          cardStyle: { backgroundColor: '#ffffff' },
+          tabBarActiveTintColor: '#ffc65a',
+          tabBarInactiveTintColor: '#ffffff',
+          tabBarLabelStyle: {
+            fontSize: 14,
+          },
+          tabBarStyle: [
+            {
+              display: 'flex',
+              backgroundColor:'#2f4f4f',
+              paddingBottom:5
+
+            },
+            null,
+          ],
+        }}
+      >
+        <Tab.Screen
+          name="Workout"
+          component={Workout}
+          options={{
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="barbell-outline" size={30} color={color} />
+            ),
+            tabBarLabel: "",
+          }}
+        />
+        <Tab.Screen
+          name="Nutrition"
+          component={Nutrition}
+          options={{
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="restaurant-outline" size={30} color={color} />
+            ),
+            tabBarLabel: "",
+          }}
+        />
+        <Tab.Screen
+          name="Chat"
+          component={ChatScreen}
+          options={{
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="chatbox-ellipses-outline" size={30} color={color} />
+            ),
+            tabBarLabel: "",
+          }}
+        />
+        <Tab.Screen
+          name="Tracking"
+          component={Tracking}
+          options={{
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="bar-chart-outline" size={30} color={color} />
+            ),
+            tabBarLabel: "",
+          }}
+        />
+        <Tab.Screen
+          name="Settings"
+          component={Settings}
+          options={{
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="settings-outline" size={30} color={color} />
+            ),
+            tabBarLabel: "",
+          }}
+        />
+      </Tab.Navigator>
+    </NavigationContainer>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: '#2f4f4f',
   },
 });
+
+export default function App() {
+  return (
+    <View style={styles.container}>
+      <MyTabs />
+    </View>
+  );
+}
