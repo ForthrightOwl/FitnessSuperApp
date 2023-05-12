@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
-import { LineChart, BarChart, Grid, XAxis, YAxis } from 'react-native-svg-charts';
+import { View, Text, StyleSheet } from 'react-native';
+import { AreaChart, LineChart, BarChart, Grid, XAxis, YAxis, Circle } from 'react-native-svg-charts';
 import * as SQLite from 'expo-sqlite';
+import * as shape from 'd3-shape';
 
 const db = SQLite.openDatabase('WeightTracker.db');
 
@@ -29,47 +30,52 @@ const AnalysisView = ({ measurements }) => {
             let prevSundayWeight = null;
             let nearestPrevMeasurement = null;
             const minimumDataPoints = 6;
-
+          
             data.forEach((item, index) => {
               const date = new Date(item.date);
               const week = Math.floor((date - new Date(date.getFullYear(), 0, 1)) / 604800000);
-
+          
+              if (week !== currentWeek) {
+                currentWeek = week;
+          
+                if (nearestPrevMeasurement === null) {
+                  nearestPrevMeasurement = item;
+                }
+          
+                const weightChange =
+                  prevSundayWeight !== null
+                    ? item.weight - prevSundayWeight
+                    : 0;
+          
+                if (Number.isFinite(weightChange)) {
+                  processedData.push({ week, date, weight: weightChange });
+                }
+          
+                prevSundayWeight = item.weight;
+              }
+          
               if (date.getDay() !== 0) {
                 nearestPrevMeasurement = item;
               }
-
-              if (date.getDay() === 0 || index === data.length - 1) {
-                if (currentWeek !== week) {
-                  currentWeek = week;
-
-                  const weightChange =
-                    prevSundayWeight !== null
-                      ? (nearestPrevMeasurement ? nearestPrevMeasurement.weight : item.weight) - prevSundayWeight
-                      : 0;
-
-                  if (Number.isFinite(weightChange)) {
-                    processedData.push({ week, date, weight: weightChange });
-                  }
-
-                  prevSundayWeight = nearestPrevMeasurement ? nearestPrevMeasurement.weight : item.weight;
-                }
-              }
             });
-
+          
             const latestWeek = processedData.length > 0 ? processedData[processedData.length - 1].week : 0;
             const startWeek = latestWeek - minimumDataPoints + 1;
-
+          
             for (let week = startWeek; week <= latestWeek; week++) {
               if (!processedData.some((item) => item.week === week)) {
                 const date = new Date();
-                processedData.push({ week, date, weight: 0 });
+                const previousWeekData = processedData.find((item) => item.week === week - 1);
+          
+                processedData.push({ week, date, weight: previousWeekData ? previousWeekData.weight : 0 });
               }
             }
-
+          
             processedData.sort((a, b) => a.week - b.week);
-
+          
             return processedData;
           };
+          
 
           const newData = processData(_array);
           setWeeklyData(newData || []);
@@ -107,43 +113,56 @@ const AnalysisView = ({ measurements }) => {
     </Text>
   );
 
+
   return (
     <View style={styles.container}>
       <View style={styles.chartContainer}>
-        <Text style={styles.textBetweenCharts}>Raw Data Chart</Text>
+        <Text style={styles.heading}>Weight</Text>
+        <Text style={styles.body}>Tracking your weight can be a great way to objectively track your progress. The chart below plots how your weight changed over the past month.</Text>
         <View style={styles.chartWrapper}>
-          <View style={{ flexDirection: 'row', height: '40%' }}>
-            <YAxis
-              data={rawChartData}
-              contentInset={{ top: 10, bottom: 10 }}
-              svg={{ fontSize: 10, fill: 'grey' }}
-            />
-            <LineChart
+        <View style={{ flexDirection: 'row', height: '80%' }}>
+          <YAxis
+            data={rawChartData}
+            contentInset={{ top: 10, bottom: 10 }}
+            svg={{ fontSize: 10, fill: 'grey' }}
+          />
+          <View style={{ flex: 1 }}>
+            <AreaChart
               style={{ flex: 1 }}
+              data={rawChartData}
+              svg={{ fill: 'rgba(47, 79, 79, 0.2)' }}
+              contentInset={{ top: 10, bottom: 10 }}
+              curve={shape.curveNatural}
+            >
+              <Grid />
+            </AreaChart>
+            <LineChart
+              style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }}
               data={rawChartData}
               svg={{ stroke: 'rgb(47, 79, 79)', strokeWidth: 2 }}
               contentInset={{ top: 10, bottom: 10 }}
+              curve={shape.curveNatural}
             >
               <Grid />
             </LineChart>
-            <XAxis
-              style={{ position: 'absolute', bottom: -20, left: 0, right: 0 }}
-              data={rawChartData}
-              formatLabel={(value, index) => rawChartLabels[index]}
-              contentInset={{ left: 30, right: 30 }}
-              svg={{ fontSize: 10, fill: 'grey' }}
-            />
           </View>
+          <XAxis
+            style={{ position: 'absolute', bottom: -20, left: 0, right: 0 }}
+            data={rawChartData}
+            formatLabel={(value, index) => rawChartLabels[index]}
+            contentInset={{ left: 10, right: 10 }}
+            svg={{ fontSize: 10, fill: 'grey' }}
+          />
+        </View>
         </View>
       </View>
-      <Text style={styles.textBetweenCharts}>Your Custom Text</Text>
       <View style={styles.chartContainer}>
-        <Text style={styles.textBetweenCharts}>Weekly Data Chart</Text>
+        <Text style={styles.body}>To compliment the weight plot, the bar chart below shows how your weight changed from week to week. Looking at your weight this way enables you to grasp the momentum and consistency of changes in your weight.</Text>
         <View style={styles.chartWrapper}>
           {/* Weekly Data Chart */}
           <View style={{ flexDirection: 'row', height: '80%' }}>
             <BarChart
-              style={{ flex: 1 }}
+              style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }}
               data={chartData}
               svg={{
                 fill: 'rgb(47, 79, 79)',
@@ -174,33 +193,43 @@ const AnalysisView = ({ measurements }) => {
 
 const styles = StyleSheet.create({
 container: {
-  marginTop: 10,
+  marginTop: 15,
   marginLeft: 10,
   marginRight: 10,
   marginBottom:10,
   borderRadius: 10,
-  backgroundColor: '#2f4f4f',
+  backgroundColor: '#ffffff',
 },
 chartContainer: {
   backgroundColor: '#2f4f4f',
   padding: 15,
   borderRadius: 10,
   overflow: 'hidden',
+  marginBottom:15
 },
 chartWrapper: {
   backgroundColor: '#ffffff',
   borderRadius: 10,
   overflow: 'hidden',
-  aspectRatio: 1,
   justifyContent: 'center',
+  aspectRatio : 1,
   padding: 15,
 },
-textBetweenCharts: {
-  fontSize: 18,
+heading: {
+  fontSize: 24,
   fontWeight: 'bold',
   textAlign: 'center',
   color: '#ffffff',
   marginTop: 10,
+  fontFamily: 'Helvetica'
+},
+body: {
+  fontSize: 16,
+  textAlign: 'left',
+  color: '#ffffff',
+  marginTop: 10,
+  marginBottom:10,
+  fontFamily: 'Helvetica'
 },
 });
 

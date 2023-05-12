@@ -124,6 +124,7 @@ const InputView = ({ onAddMeasurement }) => {
                 onDateChange={handleDateChange}
                 width={screenWidth * 0.9}
                 customDatesStyles={customDatesStyles}
+                maxDate={new Date()}
               />
             </View>
           </View>

@@ -6,7 +6,7 @@ import InputView from './tracking view components/InputView';
 import * as SQLite from 'expo-sqlite';
 
 const screenWidth = Dimensions.get('window').width;
-const screenHeight = Dimensions.get('window').height * 1.1;
+const screenHeight = Dimensions.get('window').height * 1.3;
 const db = SQLite.openDatabase('WeightTracker.db');
 
 const Tracking = () => {
@@ -84,7 +84,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     width: screenWidth - 20,
     alignSelf: 'center',
-    marginTop:5
+    marginTop:10,
   },
   tabLabel: {
     fontFamily: Platform.OS === 'ios' ? 'Helvetica' : 'Roboto',

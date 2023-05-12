@@ -2,93 +2,60 @@ import React, { useCallback } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Agenda } from 'react-native-calendars';
 import moment from 'moment';
+import * as SQLite from 'expo-sqlite';
+import { useIsFocused } from '@react-navigation/native';
 
-const today = moment().startOf('day');
-const workoutPlan = {
-"2023-04-24":[{
-"content": "Warm-up: 10-minute jog, 2 rounds of 10 burpees, 10 air squats, 10 push-ups.\n\nStrength: 5 sets of 3 reps of deadlifts (70-75% of your 1 rep max).\n\nConditioning: 4 rounds for time of: 20 kettlebell swings (24kg), 15 box jumps (24in), 10 pull-ups."}],
+// Open the database, the function openDatabase takes a single string argument
+// which is the name of the database file.
+const workoutDb = SQLite.openDatabase('workout_plan.db');
 
-"2023-04-25":[{
-"content": "Warm-up: 10-minute row, 2 rounds of 10 push press (45lbs), 10 walking lunges.\n\nStrength: 5 sets of 5 reps of push press (70-75% of your 1 rep max).\n\nConditioning: 5 rounds for time of: 10 burpee box jump overs (24in), 15 dumbbell thrusters (35lbs), 20/15 calorie row."}],
-
-"2023-04-27":[{
-"content": "Warm-up: 10-minute jog, 2 rounds of 10 bench press (45lbs), 10 sit-ups.\n\nStrength: 5 sets of 5 reps of bench press (70-75% of your 1 rep max).\n\nConditioning: 21-15-9 reps for time of: dumbbell snatches (50lbs), burpees."}],
-
-"2023-04-29":[{
-"content": "Warm-up: 10-minute row, 2 rounds of 10 overhead squats (45lbs), 10 ring rows.\n\nStrength: 5 sets of 3 reps of overhead squats (70-75% of your 1 rep max).\n\nConditioning: 5 rounds for time of: 10 box step-ups (24in, 50lbs dumbbells), 15 ring dips, 20 wall balls (20lbs)."}],
-
-"2023-05-01":[{
-"content": "Rest Day."}],
-
-"2023-05-02":[{
-"content": "Warm-up: 10-minute run, 2 rounds of 10 front squats (45lbs), 10 pull-ups.\n\nStrength: 5 sets of 5 reps of front squats (70-75% of your 1 rep max).\n\nConditioning: 5 rounds for time of: 15/12 calorie bike, 10 front rack lunges (95lbs), 5 bar muscle-ups."}],
-
-"2023-05-04":[{
-"content": "Warm-up: 10-minute row, 2 rounds of 10 push press (45lbs), 10 ring rows.\n\nStrength: 5 sets of 3 reps of push press (70-75% of your 1 rep max).\n\nConditioning: 5 rounds for time of: 10 shoulder-to-overheads (115lbs), 15 chest-to-bar pull-ups, 20 box jumps (24in)."}],
-
-"2023-05-06":[{
-"content": "Warm-up: 10-minute jog, 2 rounds of 10 deadlifts (45lbs), 10 sit-ups.\n\nStrength: 5 sets of 5 reps of deadlifts (70-75% of your 1 rep max).\n\nConditioning: 3 rounds for time of: 400m run, 30 kettlebell swings (24kg), 20abmat sit-ups."}],
-
-"2023-05-08":[{
-"content": "Rest Day."}],
-
-"2023-05-09":[{
-"content": "Warm-up: 10-minute row, 2 rounds of 10 bench press (45lbs), 10 air squats.\n\nStrength: 5 sets of 3 reps of bench press (70-75% of your 1 rep max).\n\nConditioning: 4 rounds for time of: 20 dumbbell snatches (50lbs), 15/12 calorie row, 10 handstand push-ups."}],
-
-"2023-05-11":[{
-"content": "Warm-up: 10-minute jog, 2 rounds of 10 thrusters (45lbs), 10 pull-ups.\n\nStrength: 5 sets of 5 reps of thrusters (70-75% of your 1 rep max).\n\nConditioning: 21-15-9 reps for time of: dumbbell box step-overs (24in, 50lbs), pull-ups."}],
-
-"2023-05-13":[{
-"content": "Warm-up: 10-minute row, 2 rounds of 10 overhead squats (45lbs), 10 ring dips.\n\nStrength: 5 sets of 3 reps of overhead squats (70-75% of your 1 rep max).\n\nConditioning: 5 rounds for time of: 10 devil's press (50lbs), 15 burpee box jump overs (24in), 20 wall balls (20lbs)."}],
-
-"2023-05-15":[{
-"content": "Rest Day."}],
-
-"2023-05-16":[{
-"content": "Warm-up: 10-minute jog, 2 rounds of 10 deadlifts (45lbs), 10 ring rows.\n\nStrength: 5 sets of 5 reps of deadlifts (70-75% of your 1 rep max).\n\nConditioning: 5 rounds for time of: 12/9 calorie bike, 10 dumbbell front squats (35lbs), 8 bar muscle-ups."}],
-
-"2023-05-18":[{
-"content": "Warm-up: 10-minute row, 2 rounds of 10 push press (45lbs), 10 air squats.\n\nStrength: 5 sets of 3 reps of push press (70-75% of your 1 rep max).\n\nConditioning: 5 rounds for time of: 10 thrusters (95lbs), 15 chest-to-bar pull-ups, 20 box jumps (24in)."}],
-
-"2023-05-20":[{
-"content": "Warm-up: 10-minute jog, 2 rounds of 10 bench press (45lbs), 10 sit-ups.\n\nStrength: 5 sets of 5 reps of bench press (70-75% of your 1 rep max).\n\nConditioning: 3 rounds for time of: 400m run, 30 dumbbell snatches (50lbs), 20 ring dips."}],
-
-"2023-05-22":[{
-"content": "Rest Day."}],
-
-"2023-05-23":[{
-"content": "Warm-up: 10-minute row, 2 rounds of 10 overhead squats (45lbs), 10 pull-ups.\n\nStrength: 5 sets of 3 reps of overhead squats (70-75% of your 1 rep max).\n\nConditioning: 4 rounds for time of: 20 kettlebell swings (24kg), 15/12calorie row, 10 handstand push-ups."}],
-
-"2023-05-25":[{
-"content": "Warm-up: 10-minute jog, 2 rounds of 10 thrusters (45lbs), 10 ring rows.\n\nStrength: 5 sets of 5 reps of thrusters (70-75% of your 1 rep max).\n\nConditioning: 21-15-9 reps for time of: dumbbell box step-overs (24in, 50lbs), chest-to-bar pull-ups."}],
-
-"2023-05-27":[{
-"content": "Warm-up: 10-minute row, 2 rounds of 10 deadlifts (45lbs), 10 air squats.\n\nStrength: 5 sets of 3 reps of deadlifts (70-75% of your 1 rep max).\n\nConditioning: 5 rounds for time of: 10 devil's press (50lbs), 15 burpee box jump overs (24in), 20 wall balls (20lbs)."}],
-
-"2023-05-29":[{
-"content": "Rest Day."}],
-
-"2023-05-30":[{
-"content": "Warm-up: 10-minute jog, 2 rounds of 10 bench press (45lbs), 10 pull-ups.\n\nStrength: 5 sets of 5 reps of bench press (70-75% of your 1 rep max).\n\nConditioning: 5 rounds for time of: 12/9 calorie bike, 10 dumbbell front squats (35lbs), 8 bar muscle-ups."}],
-
-"2023-06-01":[{
-"content": "Warm-up: 10-minute row, 2 rounds of 10 push press (45lbs), 10 air squats.\n\nStrength: 5 sets of 3 reps of push press (70-75% of your 1 rep max).\n\nConditioning: 5 rounds for time of: 10 thrusters (95lbs), 15 chest-to-bar pull-ups, 20 box jumps (24in)."}],
-
-"2023-06-03":[{
-"content": "Warm-up: 10-minute jog, 2 rounds of 10 deadlifts (45lbs), 10 sit-ups.\n\nStrength: 5 sets of 5 reps of deadlifts (70-75% of your 1 rep max).\n\nConditioning: 3 rounds for time of: 400m run, 30 kettlebell swings (24kg), 20 ring dips."}],
-
-"2023-06-05":[{
-"content": "Rest Day."}]
+const getWorkoutPlanFromDb = async () => {
+  return new Promise((resolve, reject) => {
+    workoutDb.transaction((tx) => {
+      tx.executeSql(
+        "SELECT * FROM workout_plans",
+        [],
+        (_, { rows }) => {
+          if (rows._array.length > 0) {
+            console.log(rows._array)
+            let workoutPlans = rows._array;
+            let formattedWorkoutPlans = {};
+            // Parse all plans into objects and format them
+            workoutPlans.forEach(workoutPlan => {
+              let plansArray = JSON.parse(workoutPlan.plan);
+              formattedWorkoutPlans[workoutPlan.date] = plansArray.map(plan => ({
+                title: plan.title,
+                content: plan.content,
+              }));
+            });
+            console.log(formattedWorkoutPlans);
+            resolve(formattedWorkoutPlans);
+          } else {
+            resolve({});
+          }
+        },
+        (_, error) => {
+          console.log("Error fetching workouts from database:", error);
+          reject(error);
+        }
+      );
+    });
+  });
 };
 
-const WorkoutItem = ({ title, content }) => {
+
+
+const today = moment().startOf('day');
+
+const WorkoutItem = React.memo(({ title, content }) => {
   return (
     <View style={styles.item}>
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.content}>{content}</Text>
     </View>
   );
-};
+});
+
 
 const EmptyWorkout = () => {
   return (
@@ -99,6 +66,9 @@ const EmptyWorkout = () => {
 };
 
 export default function Workout() {
+  const [workoutPlan, setWorkoutPlan] = React.useState({});
+  const isFocused = useIsFocused();
+
   const renderItem = useCallback((item) => {
     return <WorkoutItem title={item.title} content={item.content} />;
   }, []);
@@ -110,6 +80,22 @@ export default function Workout() {
   const renderDay = useCallback(() => {
     return null;
   }, []);
+
+  React.useEffect(() => {
+    const fetchWorkoutPlan = async () => {
+      try {
+        const workoutPlanFromDb = await getWorkoutPlanFromDb();
+        setWorkoutPlan(workoutPlanFromDb);
+      } catch (error) {
+        console.error("Error fetching workout plan from database:", error);
+      }
+    };
+
+    if (isFocused) {
+      fetchWorkoutPlan();
+    }
+  }, [isFocused]);
+
 
   return (
     <View style={styles.container}>
@@ -135,7 +121,7 @@ export default function Workout() {
             textMonthFontSize: 18,
             monthTextColor:"#2f4f4f",
             textDayFontSize: 17,
-            textDisabledColor: '#ffffff',
+            textDisabledColor: '#2f4f4f',
             dotColor:"#2f4f4f",
            }}
         style={{backgroundColor:"#ffffff"}}/>
