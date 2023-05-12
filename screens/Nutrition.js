@@ -2,44 +2,73 @@ import React, { useCallback } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Agenda } from 'react-native-calendars';
 import moment from 'moment';
+import * as SQLite from 'expo-sqlite';
+import { useIsFocused } from '@react-navigation/native';
 
-const today = moment().startOf('day');
-const nutritionPlan = {
-  "2023-04-24": [
-    {
-      "title": "Breakfast",
-      "content": "2 scrambled eggs, 1 slice of whole grain toast, and a glass of orange juice."
-    },
-    {
-      "title": "Lunch",
-      "content": "Grilled chicken salad with mixed greens, cherry tomatoes, cucumbers, and balsamic vinaigrette."
-    },
-    {
-      "title": "Dinner",
-      "content": "Baked salmon with quinoa and steamed broccoli."
-    }
-  ],
-  // ... Add more dates and meals here
+// Open the database, the function openDatabase takes a single string argument
+// which is the name of the database file.
+const nutritionDb = SQLite.openDatabase('nutrition_plan.db');
+
+const getNutritionPlanFromDb = async () => {
+  return new Promise((resolve, reject) => {
+    nutritionDb.transaction((tx) => {
+      tx.executeSql(
+        "SELECT * FROM nutrition_plans",
+        [],
+        (_, { rows }) => {
+          if (rows._array.length > 0) {
+            console.log(rows._array)
+            let nutritionPlans = rows._array;
+            let formattedNutritionPlans = {};
+            // Parse all plans into objects and format them
+            nutritionPlans.forEach(nutritionPlan => {
+              let plansArray = JSON.parse(nutritionPlan.plan);
+              formattedNutritionPlans[nutritionPlan.date] = plansArray.map(plan => ({
+                title: plan.title,
+                content: plan.content,
+              }));
+            });
+            console.log(formattedNutritionPlans);
+            resolve(formattedNutritionPlans);
+          } else {
+            resolve({});
+          }
+        },
+        (_, error) => {
+          console.log("Error fetching Nutritions from database:", error);
+          reject(error);
+        }
+      );
+    });
+  });
 };
 
-const NutritionItem = ({ title, content }) => {
+
+
+const today = moment().startOf('day');
+
+const NutritionItem = React.memo(({ title, content }) => {
   return (
     <View style={styles.item}>
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.content}>{content}</Text>
     </View>
   );
-};
+});
+
 
 const EmptyNutrition = () => {
   return (
     <View style={styles.emptyDate}>
-      <Text style={styles.emptyDateText}>No meals scheduled for today</Text>
+      <Text style={styles.emptyDateText}>Rest day</Text>
     </View>
   );
 };
 
 export default function Nutrition() {
+  const [NutritionPlan, setNutritionPlan] = React.useState({});
+  const isFocused = useIsFocused();
+
   const renderItem = useCallback((item) => {
     return <NutritionItem title={item.title} content={item.content} />;
   }, []);
@@ -52,10 +81,26 @@ export default function Nutrition() {
     return null;
   }, []);
 
+  React.useEffect(() => {
+    const fetchNutritionPlan = async () => {
+      try {
+        const NutritionPlanFromDb = await getNutritionPlanFromDb();
+        setNutritionPlan(NutritionPlanFromDb);
+      } catch (error) {
+        console.error("Error fetching Nutrition plan from database:", error);
+      }
+    };
+
+    if (isFocused) {
+      fetchNutritionPlan();
+    }
+  }, [isFocused]);
+
+
   return (
     <View style={styles.container}>
         <Agenda
-          items={nutritionPlan}
+          items={NutritionPlan}
           renderItem={renderItem}
           renderEmptyData={renderEmptyDate}
           renderDay={renderDay}
@@ -76,7 +121,7 @@ export default function Nutrition() {
             textMonthFontSize: 18,
             monthTextColor:"#2f4f4f",
             textDayFontSize: 17,
-            textDisabledColor: '#ffffff',
+            textDisabledColor: '#2f4f4f',
             dotColor:"#2f4f4f",
            }}
         style={{backgroundColor:"#ffffff"}}/>

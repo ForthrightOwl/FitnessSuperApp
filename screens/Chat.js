@@ -6,7 +6,7 @@ import * as SQLite from 'expo-sqlite';
 
 // Initialize the databases
 const workoutDb = SQLite.openDatabase('workout_plan.db');
-const nutritionDb = SQLite.openDatabase('nutrition.db');
+const nutritionDb = SQLite.openDatabase('nutrition_plan.db');
 
 // Create tables
 const createWorkoutTable = () => {
@@ -21,7 +21,7 @@ const createWorkoutTable = () => {
 const createNutritionTable = () => {
   nutritionDb.transaction(tx => {
     tx.executeSql(
-      `CREATE TABLE IF NOT EXISTS nutrition_plans (id INTEGER PRIMARY KEY AUTOINCREMENT, plan TEXT);`
+      `CREATE TABLE IF NOT EXISTS nutrition_plans (id INTEGER PRIMARY KEY AUTOINCREMENT, date TEXT, plan TEXT);`
     );
   });
 };
@@ -211,72 +211,138 @@ const getAIResponse = async (userInput, currentMessages) => {
     }
 
     let data = await response.json();
-  const workoutStartIndex = data.content.indexOf('!wkst!');
-  const workoutEndIndex = data.content.indexOf('!wknd!');
+    const workoutStartIndex = data.content.indexOf('!wkst!');
+    const workoutEndIndex = data.content.indexOf('!wknd!');
+    const nutritionStartIndex = data.content.indexOf('!ntst!');
+    const nutritionEndIndex = data.content.indexOf('!ntnd!');
 
-  if (workoutStartIndex !== -1 && workoutEndIndex !== -1) {
-    // Extract workout plan
-    console.log(data)
-    let workoutPlanStr = data.content.slice(workoutStartIndex + 7, workoutEndIndex);
-  
-    // Ensure that the extracted string is wrapped in curly braces
-    if (!workoutPlanStr.startsWith('{')) {
-      workoutPlanStr = '{' + workoutPlanStr;
-    }
-    if (!workoutPlanStr.endsWith('}')) {
-      workoutPlanStr = workoutPlanStr + '}';
-    }
-    
-    console.log('Fixed the string:' + workoutPlanStr)
-    let workoutPlanObj;
-    try {
-      workoutPlanObj = JSON.parse(workoutPlanStr);
-    } catch (error) {
-      console.error('Error parsing workout plan:', error);
-      // Handle error as needed...
-      return;
+    if (workoutStartIndex !== -1 && workoutEndIndex !== -1) {
+      data = await handleWorkoutPlans(workoutStartIndex, workoutEndIndex, data);
     }
 
-    // Clear the workout table first
-    workoutDb.transaction(tx => {
-      tx.executeSql(
-        `DELETE FROM workout_plans;`,
-        [],
-        (_, resultSet) => {
-          console.log('All existing workout plans deleted successfully.');
+    if (nutritionStartIndex !== -1 && nutritionEndIndex !== -1) {
+      data = await handleNutritionPlans(nutritionStartIndex, nutritionEndIndex, data);
+    }
 
-          // Then, insert the new plans
-          Object.keys(workoutPlanObj).forEach(date => {
-            let plan = JSON.stringify(workoutPlanObj[date]);
-
-            tx.executeSql(
-              `INSERT INTO workout_plans (date, plan) VALUES (?, ?);`,
-              [date, plan],
-              (_, resultSet) => {
-                console.log('New workout plan saved successfully.');
-              },
-              (_, error) => {
-                console.error(`Error saving workout plan to database:`, error);
-              }
-            );
-          });
-        },
-        (_, error) => {
-          console.error(`Error deleting existing workout plans:`, error);
-        }
-      );
-    });
-
-    // Remove workout plan from AI response message
-    data.content = data.content.slice(0, workoutStartIndex) + data.content.slice(workoutEndIndex + 7);
-  }
-
-  return data;
-} catch (error) {
+    return data;
+  } catch (error) {
     console.error('Error fetching AI response:', error);
     return 'Sorry, I am unable to process your request at this time.';
   }
 };
+
+const handleWorkoutPlans = async (startIndex, endIndex, data) => {
+  // Extract workout plan
+  let workoutPlanStr = data.content.slice(startIndex + 7, endIndex);
+
+  // Ensure that the extracted string is wrapped in curly braces
+  if (!workoutPlanStr.startsWith('{')) {
+    workoutPlanStr = '{' + workoutPlanStr;
+  }
+  if (!workoutPlanStr.endsWith('}')) {
+    workoutPlanStr = workoutPlanStr + '}';
+  }
+
+  let workoutPlanObj;
+  try {
+    workoutPlanObj = JSON.parse(workoutPlanStr);
+  } catch (error) {
+    console.error('Error parsing workout plan:', error);
+    return;
+  }
+
+  // Clear the workout table first
+  workoutDb.transaction(tx => {
+    tx.executeSql(
+      `DELETE FROM workout_plans;`,
+      [],
+      (_, resultSet) => {
+        console.log('All existing workout plans deleted successfully.');
+
+        // Then, insert the new plans
+        Object.keys(workoutPlanObj).forEach(date => {
+          let plan = JSON.stringify(workoutPlanObj[date]);
+
+          tx.executeSql(
+            `INSERT INTO workout_plans (date, plan) VALUES (?, ?);`,
+            [date, plan],
+            (_, resultSet) => {
+              console.log('New workout plan saved successfully.');
+            },
+            (_, error) => {
+              console.error(`Error saving workout plan to database:`, error);
+            }
+          );
+        });
+      },
+      (_, error) => {
+        console.error(`Error deleting existing workout plans:`, error);
+      }
+    );
+  });
+
+  // Remove workout plan from AI response message
+  data.content = data.content.slice(0, startIndex) + data.content.slice(endIndex + 7);
+
+  return data;
+};
+
+const handleNutritionPlans = async (startIndex, endIndex, data) => {
+  // Extract nutrition plan
+  let nutritionPlanStr = data.content.slice(startIndex + 6, endIndex);
+
+  // Ensure that the extracted string is wrapped in curly braces
+  if (!nutritionPlanStr.startsWith('{')) {
+    nutritionPlanStr = '{' + nutritionPlanStr;
+  }
+  if (!nutritionPlanStr.endsWith('}')) {
+    nutritionPlanStr = nutritionPlanStr + '}';
+  }
+
+  let nutritionPlanObj;
+  try {
+    nutritionPlanObj = JSON.parse(nutritionPlanStr);
+  } catch (error) {
+    console.error('Error parsing nutrition plan:', error);
+    return;
+  }
+
+  // Clear the nutrition table first
+  nutritionDb.transaction(tx => {
+    tx.executeSql(
+      `DELETE FROM nutrition_plans;`,
+      [],
+      (_, resultSet) => {
+        console.log('All existing nutrition plans deleted successfully.');
+
+        // Then, insert the new plans
+        Object.keys(nutritionPlanObj).forEach(date => {
+          let plan = JSON.stringify(nutritionPlanObj[date]);
+
+          tx.executeSql(
+            `INSERT INTO nutrition_plans (date, plan) VALUES (?, ?);`,
+            [date, plan],
+            (_, resultSet) => {
+              console.log('New nutrition plan saved successfully.');
+            },
+            (_, error) => {
+              console.error(`Error saving nutrition plan to database:`, error);
+            }
+          );
+        });
+      },
+      (_, error) => {
+        console.error(`Error deleting existing nutrition plans:`, error);
+      }
+    );
+  });
+
+  // Remove nutrition plan from AI response message
+  data.content = data.content.slice(0, startIndex) + data.content.slice(endIndex + 6);
+
+  return data;
+};
+
 
   const convertToGiftedChatFormat = (messages) => {
     return messages.map((message, index) => ({
