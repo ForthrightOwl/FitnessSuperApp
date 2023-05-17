@@ -8,83 +8,89 @@ import Nutrition from './screens/Nutrition';
 import ChatScreen from './screens/Chat';
 import Tracking from './screens/Tracking';
 import Settings from './screens/Settings';
+import { WorkoutProvider } from './WorkoutContext'; 
+import { NutritionProvider } from './NutritionContext'; 
 
 const Tab = createBottomTabNavigator();
 
 function MyTabs() {
   return (
-    <NavigationContainer>
-      <Tab.Navigator
-        screenOptions={{
-          cardStyle: { backgroundColor: '#ffffff' },
-          tabBarActiveTintColor: '#ffc65a',
-          tabBarInactiveTintColor: '#ffffff',
-          tabBarLabelStyle: {
-            fontSize: 14,
-          },
-          tabBarStyle: [
-            {
-              display: 'flex',
-              backgroundColor:'#2f4f4f',
-              paddingBottom:5
+    <WorkoutProvider>
+      <NutritionProvider>
+        <NavigationContainer>
+          <Tab.Navigator
+            screenOptions={{
+              cardStyle: { backgroundColor: '#ffffff' },
+              tabBarActiveTintColor: '#ffc65a',
+              tabBarInactiveTintColor: '#ffffff',
+              tabBarLabelStyle: {
+                fontSize: 14,
+              },
+              tabBarStyle: [
+                {
+                  display: 'flex',
+                  backgroundColor:'#2f4f4f',
+                  paddingBottom:5
 
-            },
-            null,
-          ],
-        }}
-      >
-        <Tab.Screen
-          name="Workout"
-          component={Workout}
-          options={{
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="barbell-outline" size={30} color={color} />
-            ),
-            tabBarLabel: "",
-          }}
-        />
-        <Tab.Screen
-          name="Nutrition"
-          component={Nutrition}
-          options={{
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="restaurant-outline" size={30} color={color} />
-            ),
-            tabBarLabel: "",
-          }}
-        />
-        <Tab.Screen
-          name="Chat"
-          component={ChatScreen}
-          options={{
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="chatbox-ellipses-outline" size={30} color={color} />
-            ),
-            tabBarLabel: "",
-          }}
-        />
-        <Tab.Screen
-          name="Tracking"
-          component={Tracking}
-          options={{
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="bar-chart-outline" size={30} color={color} />
-            ),
-            tabBarLabel: "",
-          }}
-        />
-        <Tab.Screen
-          name="Settings"
-          component={Settings}
-          options={{
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="settings-outline" size={30} color={color} />
-            ),
-            tabBarLabel: "",
-          }}
-        />
-      </Tab.Navigator>
-    </NavigationContainer>
+                },
+                null,
+              ],
+            }}
+          >
+            <Tab.Screen
+              name="Workout"
+              component={Workout}
+              options={{
+                tabBarIcon: ({ color, size }) => (
+                  <Ionicons name="barbell-outline" size={30} color={color} />
+                ),
+                tabBarLabel: "",
+              }}
+            />
+            <Tab.Screen
+              name="Nutrition"
+              component={Nutrition}
+              options={{
+                tabBarIcon: ({ color, size }) => (
+                  <Ionicons name="restaurant-outline" size={30} color={color} />
+                ),
+                tabBarLabel: "",
+              }}
+            />
+            <Tab.Screen
+              name="Chat"
+              component={ChatScreen}
+              options={{
+                tabBarIcon: ({ color, size }) => (
+                  <Ionicons name="chatbox-ellipses-outline" size={30} color={color} />
+                ),
+                tabBarLabel: "",
+              }}
+            />
+            <Tab.Screen
+              name="Tracking"
+              component={Tracking}
+              options={{
+                tabBarIcon: ({ color, size }) => (
+                  <Ionicons name="bar-chart-outline" size={30} color={color} />
+                ),
+                tabBarLabel: "",
+              }}
+            />
+            <Tab.Screen
+              name="Settings"
+              component={Settings}
+              options={{
+                tabBarIcon: ({ color, size }) => (
+                  <Ionicons name="settings-outline" size={30} color={color} />
+                ),
+                tabBarLabel: "",
+              }}
+            />
+          </Tab.Navigator>
+        </NavigationContainer>
+      </NutritionProvider>
+    </WorkoutProvider>
   );
 }
 

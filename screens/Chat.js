@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { GiftedChat, Bubble, InputToolbar, Send } from 'react-native-gifted-chat';
 import { TouchableOpacity, Text, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SQLite from 'expo-sqlite';
+import { WorkoutContext } from '../WorkoutContext';
+import { NutritionContext } from '../NutritionContext';
 
 // Initialize the databases
 const workoutDb = SQLite.openDatabase('workout_plan.db');
@@ -49,16 +51,16 @@ const generateDateList = () => {
 
 const dateList = generateDateList();
 
-let initialMessage = `You are now BodyGenius, a personal fitness super assistant. Your objective is to help your client achieve their fitness goals by creating custom workouts, meal plans and by being a useful resource to answer any fitness related questions. Ask lots of questions to understand your client and personalize your advice to them. Do not make any assumptions, gather all the information you need to give accurate advice.
+let initialMessage = `You are now BodyGenius, a personal fitness super assistant. Your objective is to help your client achieve their fitness goals by creating professional and scientific workouts and meal plans, and by being a useful resource to answer any fitness related questions. Ask lots of questions to understand your client and personalize your advice to them. Consider their gender, age, experience, goals, schedule preferences and other similar important factors when creating their workout and nutrition plans.
 
 You are a part of an app and it is essential you follow these instructions EXACTLY for the app to function properly:
-When specifying workouts always begin with a token !wkst! and end with a token !wknd! , specify the plan in JSON format with stringified date as the key and an array containing objects with title and content properties as content. Here is an example: !wkst!{“YYYY-MM-DD”: [{“title": title for the section, "content": workout specifics}], … rest of the dates}!wknd!, for each of the following dates:${dateList}. Your workouts will not be displayed to the user in the chat, but will be loaded into an agenda for them in the workouts screen of the app, dont say that your workout is there, instead direct them to the workout screen to inspect it.
+1. When specifying workouts always begin with a token !wkst! and end with a token !wknd! , specify the plan in JSON format with stringified date as the key and an array containing objects with title and content properties as content. Here is an example: !wkst!{“YYYY-MM-DD”: [{“title": title for the section, "content": workout specifics}], … rest of the dates}!wknd!, for each of the following dates:${dateList}. Your workout plan will be stripped out of the message displayed to the user, invite them to review the plan in the workouts tab.
 2. Follow the same format for nutrition, only with tokens !ntst! to start and !ntnd! to end. Specify each meal for every date.
 3. There is a progress tracking screen, so if the client asks about tracking their progress redirect them there.
 
 Provide plentiful detail in workout and nutrition plans. Always encourage your client to exercise their own judgement in regards to their health. When giving exercise form advice, always provide a link to an instructional video.
 
-If you want to extend or adjust existing meal or workout plans, simply request them with tokens !wk?! for workouts, and !nt?! for nutrition. This message will not be shown to the user either, so type the token in alone, and the system will provide you with a response.`
+If you are asked to edit an existing workout plan, but the plan is not included, reply !wk?, for the nutrition plan reply !nt?.`
 const initialBGMessage = `How can I help you today?`
 
 const hasDataInTables = async () => {
@@ -89,6 +91,9 @@ const hasDataInTables = async () => {
 export default function ChatScreen() {
   const [messages, setMessages] = useState([]);
   const [isAssistantTyping, setIsAssistantTyping] = useState(false);
+
+  const { updateWorkoutData } = useContext(WorkoutContext);
+  const { updateNutritionData } = useContext(NutritionContext);
 
   useEffect(() => {
     (async () => {
@@ -121,7 +126,7 @@ export default function ChatScreen() {
       setMessages(convertToGiftedChatFormat(parsedMessages));
     } else {
       const initialMessages = [
-        { role: 'user', content: initialMessage},
+        { role: 'system', content: initialMessage},
         { role: 'assistant', content: initialBGMessage },
       ];
       setMessages(convertToGiftedChatFormat(initialMessages.slice(1))); // Slice the initialMessages array before converting
@@ -267,6 +272,7 @@ const handleWorkoutPlans = async (startIndex, endIndex, data) => {
             `INSERT INTO workout_plans (date, plan) VALUES (?, ?);`,
             [date, plan],
             (_, resultSet) => {
+              updateWorkoutData(true),
               console.log('New workout plan saved successfully.');
             },
             (_, error) => {
@@ -323,6 +329,7 @@ const handleNutritionPlans = async (startIndex, endIndex, data) => {
             `INSERT INTO nutrition_plans (date, plan) VALUES (?, ?);`,
             [date, plan],
             (_, resultSet) => {
+              updateNutritionData(true),
               console.log('New nutrition plan saved successfully.');
             },
             (_, error) => {
