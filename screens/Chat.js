@@ -63,30 +63,7 @@ Provide plentiful detail in workout and nutrition plans. Always encourage your c
 If you are asked to edit an existing workout plan, but the plan is not included, reply !wk?, for the nutrition plan reply !nt?.`
 const initialBGMessage = `How can I help you today?`
 
-const hasDataInTables = async () => {
-  const checkTable = async (db, tableName) => {
-    return new Promise((resolve, reject) => {
-      db.transaction(tx => {
-        tx.executeSql(
-          `SELECT * FROM ${tableName} LIMIT 1;`,
-          [],
-          (_, { rows }) => {
-            resolve(rows.length > 0);
-          },
-          (_, error) => {
-            console.error(`Error fetching data from ${tableName}:`, error);
-            reject(false);
-          }
-        );
-      });
-    });
-  };
 
-  const workoutData = await checkTable(workoutDb, 'workout_plans');
-  const nutritionData = await checkTable(nutritionDb, 'nutrition_plans');
-
-  return { workoutData, nutritionData };
-};
 
 export default function ChatScreen() {
   const [messages, setMessages] = useState([]);
@@ -95,28 +72,128 @@ export default function ChatScreen() {
   const { updateWorkoutData } = useContext(WorkoutContext);
   const { updateNutritionData } = useContext(NutritionContext);
 
+  const getPlanFromDb = async (db, tableName, startOfWeek, endOfWeek) => {
+    return new Promise((resolve, reject) => {
+      const sqlStart = Date.now();
+  
+      const query = `SELECT * FROM ${tableName} WHERE date >= ? AND date <= ?`;
+  
+      db.transaction((tx) => {
+        tx.executeSql(
+          query,
+          [startOfWeek, endOfWeek],
+          (_, { rows }) => {
+            const sqlEnd = Date.now();
+            console.log("SQL execution time: " + (sqlEnd - sqlStart) + "ms");
+  
+            const formatStart = Date.now();
+  
+            if (rows._array.length > 0) {
+              let plans = rows._array;
+              let formattedPlans = {};
+              plans.forEach(plan => {
+                let plansArray = JSON.parse(plan.plan);
+                formattedPlans[plan.date] = plansArray.map(p => ({
+                  title: p.title,
+                  content: p.content,
+                }));
+              });
+  
+              const formatEnd = Date.now();
+              console.log("Data formatting time: " + (formatEnd - formatStart) + "ms");
+  
+              resolve(formattedPlans);
+            } else {
+              resolve({});
+            }
+          },
+          (_, error) => {
+            console.log(`Error fetching data from ${tableName}:`, error);
+            reject(error);
+          }
+        );
+      });
+    });
+  };
+  
+  
+  const getLastPlanDate = async (db, tableName) => {
+    return new Promise((resolve, reject) => {
+      const query = `SELECT * FROM ${tableName} ORDER BY date DESC LIMIT 1`;
+    
+      db.transaction((tx) => {
+        tx.executeSql(
+          query,
+          [],
+          (_, { rows }) => {
+            if (rows._array.length > 0) {
+              resolve(rows._array[0].date);
+            } else {
+              resolve(null);
+            }
+          },
+          (_, error) => {
+            console.log(`Error fetching last plan date from ${tableName}:`, error);
+            reject(error);
+          }
+        );
+      });
+    });
+  };
+  
+  const getLastPlan = async (db, tableName) => {
+    const lastPlanDate = await getLastPlanDate(db, tableName);
+    if (lastPlanDate) {
+      const twoWeeksBefore = new Date(lastPlanDate);
+      twoWeeksBefore.setDate(twoWeeksBefore.getDate() - 14);
+      
+      // Convert twoWeeksBefore to a string in the "YYYY-MM-DD" format
+      const twoWeeksBeforeStr = twoWeeksBefore.toISOString().split('T')[0];
+      
+      const plan = await getPlanFromDb(db, tableName, twoWeeksBeforeStr, lastPlanDate);
+      return plan;
+    } else {
+      return null;
+    }
+  };
+  
   useEffect(() => {
-    (async () => {
-      createWorkoutTable();
-      createNutritionTable();
-      const { workoutData, nutritionData } = await hasDataInTables();
-      let dataMessage = '';
-  
-      if (workoutData && nutritionData) {
-        dataMessage = "You already have workout and nutrition plans stored.";
-      } else if (workoutData) {
-        dataMessage = "You already have workout plans stored.";
-      } else if (nutritionData) {
-        dataMessage = "You already have nutrition plans stored.";
-      } else {
-        dataMessage = "You don't have any workout or nutrition plans stored yet.";
+    async function fetchData() {
+      try {
+        createWorkoutTable();
+        createNutritionTable();
+    
+        const workoutPlan = await getLastPlan(workoutDb, 'workout_plans');
+        const nutritionPlan = await getLastPlan(nutritionDb, 'nutrition_plans');
+    
+        let dataMessage = '';
+    
+        if (workoutPlan && nutritionPlan) {
+          dataMessage = "Here is your current workout and nutrition plans: \n\n" 
+                      + "Workout Plan: " + JSON.stringify(workoutPlan) + "\n\n"
+                      + "Nutrition Plan: " + JSON.stringify(nutritionPlan);
+        } else if (workoutPlan) {
+          dataMessage = "Here is your current workout plan: \n\n" 
+                      + "Workout Plan: " + JSON.stringify(workoutPlan);
+        } else if (nutritionPlan) {
+          dataMessage = "Here is your current nutrition plan: \n\n"
+                      + "Nutrition Plan: " + JSON.stringify(nutritionPlan);
+        } else {
+          dataMessage = "You don't have any workout or nutrition plans stored for the last two weeks.";
+        }
+    
+        initialMessage += `\n\n${dataMessage}`;
+        loadMessagesFromStorage();
+      } catch (error) {
+        console.log(error);
       }
+    }
   
-      dataMessage += " You can request them with tokens !wk?! for workouts, and !nt?! for nutrition.";
-      initialMessage += `\n\n${dataMessage}`;
-      loadMessagesFromStorage();
-    })();
+    fetchData();
   }, []);
+  
+  
+  
 
   const loadMessagesFromStorage = async () => {
     const savedMessages = await AsyncStorage.getItem('chatHistory');
@@ -188,8 +265,6 @@ export default function ChatScreen() {
     });
   }
 };
-
-
 
 const getAIResponse = async (userInput, currentMessages) => {
   const messages = convertFromGiftedChatFormat(currentMessages);
