@@ -214,7 +214,7 @@ export default function ChatScreen() {
 
   const resetChatHistory = async () => {
     const initialMessages = [
-      { role: 'user', content: initialMessage },
+      { role: 'system', content: initialMessage },
       { role: 'assistant', content: initialBGMessage },
     ];
 
@@ -269,7 +269,7 @@ export default function ChatScreen() {
 const getAIResponse = async (userInput, currentMessages) => {
   const messages = convertFromGiftedChatFormat(currentMessages);
   messages.unshift({
-    role: 'user',
+    role: 'system',
     content: initialMessage,
   });
   messages.push({ role: 'user', content: userInput });
@@ -445,65 +445,96 @@ const handleNutritionPlans = async (startIndex, endIndex, data) => {
     }));
   };  
   
+const [longWait, setLongWait] = React.useState(false);
+const typingTimer = React.useRef(null);
 
-  return (
-    <View style={{ flex: 1 }}>
-      <ResetButton />
-      <GiftedChat
-        messages={messages}
-        onSend={newMessages => onSend(newMessages)}
-        user={{
-          _id: 1,
-        }}
-        listViewProps={{
-          style: {
-            backgroundColor: '#ececec',
-          },
-        }}
-        renderBubble={props => {
-          return (
-            <Bubble
-              {...props}
-              wrapperStyle={{
-                left: { backgroundColor: '#ffffff' },
-                right: { backgroundColor: '#2f4f4f' },
-              }}
-              textStyle={{
-                left: { color: '#3a3a3a', fontFamily: 'Helvetica'},
-                right: { color: '#ffffff', fontFamily: 'Helvetica' },
-              }}
-            />
-          );
-        }}
-        renderInputToolbar={props => (
-          <InputToolbar
+React.useEffect(() => {
+  if (isAssistantTyping) {
+    typingTimer.current = setTimeout(() => {
+      setLongWait(true);
+    }, 10000);
+  } else {
+    clearTimeout(typingTimer.current);
+    typingTimer.current = null;
+    setLongWait(false);
+  }
+}, [isAssistantTyping]);
+
+return (
+  <View style={{ flex: 1 }}>
+    <ResetButton />
+    <GiftedChat
+      messages={messages}
+      onSend={newMessages => onSend(newMessages)}
+      user={{
+        _id: 1,
+      }}
+      listViewProps={{
+        style: {
+          backgroundColor: '#ececec',
+        },
+      }}
+      renderAvatar={null}
+      renderBubble={props => {
+        return (
+          <Bubble
             {...props}
-            containerStyle={{
-              backgroundColor: '#ffffff',
+            wrapperStyle={{
+              left: { backgroundColor: '#ffffff' },
+              right: { backgroundColor: '#2f4f4f' },
+            }}
+            textStyle={{
+              left: { color: '#3a3a3a', fontFamily: 'Helvetica'},
+              right: { color: '#ffffff', fontFamily: 'Helvetica' },
             }}
           />
-        )}
-        renderSend={props => (
-          <Send {...props}>
-            <TouchableOpacity
-              style={{
-                backgroundColor: '#2f4f4f',
-                paddingHorizontal: 10,
-                paddingVertical: 5,
-                borderRadius: 20,
-                marginRight: 10,
-                marginBottom: 10,
-              }}
-              onPress={() => {
-                props.onSend({ text: props.text.trim() }, true);
-              }}
-            >
-              <Text style={{ color: '#ffffff' }}>Send</Text>
-            </TouchableOpacity>
-          </Send>
-        )}
-        isTyping={isAssistantTyping}
-      />
-    </View>
-  );
+        );
+      }}
+      renderInputToolbar={props => (
+        <InputToolbar
+          {...props}
+          containerStyle={{
+            backgroundColor: '#ffffff',
+          }}
+        />
+      )}
+      renderSend={props => (
+        <Send {...props}>
+          <TouchableOpacity
+            style={{
+              backgroundColor: '#2f4f4f',
+              paddingHorizontal: 10,
+              paddingVertical: 5,
+              borderRadius: 20,
+              marginRight: 10,
+              marginBottom: 10,
+            }}
+            onPress={() => {
+              props.onSend({ text: props.text.trim() }, true);
+            }}
+          >
+            <Text style={{ color: '#ffffff' }}>Send</Text>
+          </TouchableOpacity>
+        </Send>
+      )}
+      isTyping={isAssistantTyping}
+      renderFooter={props => {
+        if (longWait) {
+          return (
+            <View style={{ flexDirection: 'row', alignItems: 'center', margin: 10 }}>
+              <Text>Plan is generating, this might take a few minutes...</Text>
+            </View>
+          );
+        } else if (isAssistantTyping) {
+          return (
+            <View style={{ flexDirection: 'row', alignItems: 'center', margin: 10 }}>
+              <Text style={{ marginLeft: 10 }}>Assistant is typing...</Text>
+            </View>
+          );
+        }
+        return null;
+      }}
+    />
+  </View>
+);
 }
