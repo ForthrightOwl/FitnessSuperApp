@@ -71,8 +71,8 @@ const EmptyWorkout = () => {
 export default function Workout() {
   const [workoutPlan, setWorkoutPlan] = React.useState({});
   const [currentWeek, setCurrentWeek] = React.useState({
-    start: moment().startOf('week').format('YYYY-MM-DD'),
-    end: moment().endOf('week').format('YYYY-MM-DD'),
+    start: moment().subtract(2, 'weeks').startOf('week').format('YYYY-MM-DD'),
+    end: moment().add(2, 'weeks').endOf('week').format('YYYY-MM-DD'),
   });
   const { workoutDataChanged, updateWorkoutData } = useContext(WorkoutContext);
 
@@ -122,14 +122,14 @@ renderDay={renderDay}
 firstDay={1}
 showOnlySelectedDayItems
 onDayPress={(day) => {
-const selectedWeekStart = moment(day.dateString).startOf('week').format('YYYY-MM-DD');
-const selectedWeekEnd = moment(day.dateString).endOf('week').format('YYYY-MM-DD');
-if (selectedWeekStart !== currentWeek.start || selectedWeekEnd !== currentWeek.end) {
-setCurrentWeek({
-start: selectedWeekStart,
-end: selectedWeekEnd,
-});
-}
+  const selectedWeekStart = moment(day.dateString).subtract(2, 'weeks').startOf('week').format('YYYY-MM-DD');
+  const selectedWeekEnd = moment(day.dateString).add(2, 'weeks').endOf('week').format('YYYY-MM-DD');
+  if (selectedWeekStart !== currentWeek.start || selectedWeekEnd !== currentWeek.end) {
+    setCurrentWeek({
+      start: selectedWeekStart,
+      end: selectedWeekEnd,
+    });
+  }
 }}
 theme={{
 backgroundColor: '#ffffff',
