@@ -117,23 +117,21 @@ export default function ChatScreen() {
   };
   
   
-  const getLastPlanDate = async (db, tableName) => {
+  const getLastPlanDate = () => {
     return new Promise((resolve, reject) => {
-      const query = `SELECT * FROM ${tableName} ORDER BY date DESC LIMIT 1`;
-    
-      db.transaction((tx) => {
+      workoutDb.transaction((tx) => {
         tx.executeSql(
-          query,
+          `SELECT MAX(date) as maxDate FROM workout_plans`,
           [],
           (_, { rows }) => {
-            if (rows._array.length > 0) {
-              resolve(rows._array[0].date);
+            if (rows._array && rows._array.length > 0) {
+              resolve(rows._array[0].maxDate);
             } else {
               resolve(null);
             }
           },
           (_, error) => {
-            console.log(`Error fetching last plan date from ${tableName}:`, error);
+            console.log("Error fetching the most recent date from database:", error);
             reject(error);
           }
         );
@@ -182,7 +180,7 @@ export default function ChatScreen() {
           dataMessage = "You don't have any workout or nutrition plans stored for the last two weeks.";
         }
     
-        initialMessage += `\n\n${dataMessage}`;
+        initialMessage = `${dataMessage}\n\n${initialMessage}`;
         loadMessagesFromStorage();
       } catch (error) {
         console.log(error);
@@ -199,26 +197,21 @@ export default function ChatScreen() {
     const savedMessages = await AsyncStorage.getItem('chatHistory');
     if (savedMessages) {
       const parsedMessages = JSON.parse(savedMessages);
-      parsedMessages.shift(); // Remove the first message
       setMessages(convertToGiftedChatFormat(parsedMessages));
     } else {
       const initialMessages = [
-        { role: 'system', content: initialMessage},
         { role: 'assistant', content: initialBGMessage },
       ];
-      setMessages(convertToGiftedChatFormat(initialMessages.slice(1))); // Slice the initialMessages array before converting
-      AsyncStorage.setItem('chatHistory', JSON.stringify(initialMessages));
+      setMessages(convertToGiftedChatFormat(initialMessages)); 
+      AsyncStorage.setItem('chatHistory', JSON.stringify([ { role: 'system', content: initialMessage }, ...initialMessages]));
     }
   };
   
 
   const resetChatHistory = async () => {
     const initialMessages = [
-      { role: 'system', content: initialMessage },
       { role: 'assistant', content: initialBGMessage },
     ];
-
-    setMessages(convertToGiftedChatFormat(initialMessages).slice(1));
     await AsyncStorage.setItem('chatHistory', JSON.stringify(initialMessages));
   };
 
@@ -268,11 +261,8 @@ export default function ChatScreen() {
 
 const getAIResponse = async (userInput, currentMessages) => {
   const messages = convertFromGiftedChatFormat(currentMessages);
-  messages.unshift({
-    role: 'system',
-    content: initialMessage,
-  });
   messages.push({ role: 'user', content: userInput });
+  messages.push({ role: 'system', content: initialMessage }); // Add the system message here
 
   console.log('Sending messages:', JSON.stringify({ messages })); // Added logging
 
@@ -331,6 +321,34 @@ const handleWorkoutPlans = async (startIndex, endIndex, data) => {
     return;
   }
 
+  // Get the first date from the workout plan
+  const firstDateFromPlan = Object.keys(workoutPlanObj)[0];
+
+  // Check if the first date is in the dateList
+  if (!dateList.slice(0, 5).includes(firstDateFromPlan)) {
+    // Get the first date from the dateList
+    const firstDateFromList = dateList[0];
+    // Create a new workout plan object with updated dates
+    const updatedWorkoutPlanObj = {};
+    const originalDates = [];
+    const newDates = [];
+    for (const date in workoutPlanObj) {
+      const dateObj = new Date(date);
+      const daysDiff = Math.floor((dateObj - new Date(firstDateFromPlan)) / (1000 * 60 * 60 * 24));
+      const newDateObj = new Date(firstDateFromList);
+      newDateObj.setDate(newDateObj.getDate() + daysDiff);
+      const newDate = newDateObj.toISOString().split('T')[0];
+      updatedWorkoutPlanObj[newDate] = workoutPlanObj[date];
+      // Store original and new dates for logging
+      originalDates.push(date);
+      newDates.push(newDate);
+    }
+    // Update the workoutPlanObj to be the updatedWorkoutPlanObj
+    workoutPlanObj = updatedWorkoutPlanObj;
+
+    console.log(`Dates needed to be changed. Changed: ${originalDates} to ${newDates}`);
+  }
+
   // Clear the workout table first
   workoutDb.transaction(tx => {
     tx.executeSql(
@@ -368,9 +386,10 @@ const handleWorkoutPlans = async (startIndex, endIndex, data) => {
   return data;
 };
 
+
 const handleNutritionPlans = async (startIndex, endIndex, data) => {
   // Extract nutrition plan
-  let nutritionPlanStr = data.content.slice(startIndex + 6, endIndex);
+  let nutritionPlanStr = data.content.slice(startIndex + 7, endIndex);
 
   // Ensure that the extracted string is wrapped in curly braces
   if (!nutritionPlanStr.startsWith('{')) {
@@ -385,7 +404,36 @@ const handleNutritionPlans = async (startIndex, endIndex, data) => {
     nutritionPlanObj = JSON.parse(nutritionPlanStr);
   } catch (error) {
     console.error('Error parsing nutrition plan:', error);
+    console.log('Here is the sstring that caused the error:' + nutritionPlanStr)
     return;
+  }
+
+  // Get the first date from the nutrition plan
+  const firstDateFromPlan = Object.keys(nutritionPlanObj)[0];
+
+  // Check if the first date is in the dateList
+  if (!dateList.slice(0, 5).includes(firstDateFromPlan)) {
+    // Get the first date from the dateList
+    const firstDateFromList = dateList[0];
+    // Create a new nutrition plan object with updated dates
+    const updatedNutritionPlanObj = {};
+    const originalDates = [];
+    const newDates = [];
+    for (const date in nutritionPlanObj) {
+      const dateObj = new Date(date);
+      const daysDiff = Math.floor((dateObj - new Date(firstDateFromPlan)) / (1000 * 60 * 60 * 24));
+      const newDateObj = new Date(firstDateFromList);
+      newDateObj.setDate(newDateObj.getDate() + daysDiff);
+      const newDate = newDateObj.toISOString().split('T')[0];
+      updatedNutritionPlanObj[newDate] = nutritionPlanObj[date];
+      // Store original and new dates for logging
+      originalDates.push(date);
+      newDates.push(newDate);
+    }
+    // Update the nutritionPlanObj to be the updatedNutritionPlanObj
+    nutritionPlanObj = updatedNutritionPlanObj;
+
+    console.log(`Dates needed to be changed. Changed: ${originalDates} to ${newDates}`);
   }
 
   // Clear the nutrition table first
@@ -404,7 +452,7 @@ const handleNutritionPlans = async (startIndex, endIndex, data) => {
             `INSERT INTO nutrition_plans (date, plan) VALUES (?, ?);`,
             [date, plan],
             (_, resultSet) => {
-              updateNutritionData(true),
+              updateWorkoutData(true),
               console.log('New nutrition plan saved successfully.');
             },
             (_, error) => {
@@ -420,7 +468,7 @@ const handleNutritionPlans = async (startIndex, endIndex, data) => {
   });
 
   // Remove nutrition plan from AI response message
-  data.content = data.content.slice(0, startIndex) + data.content.slice(endIndex + 6);
+  data.content = data.content.slice(0, startIndex) + data.content.slice(endIndex + 7);
 
   return data;
 };

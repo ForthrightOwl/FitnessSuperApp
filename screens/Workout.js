@@ -8,6 +8,29 @@ import { useFocusEffect } from '@react-navigation/native';
 
 const workoutDb = SQLite.openDatabase('workout_plan.db');
 
+const getMostRecentDateFromDb = () => {
+  return new Promise((resolve, reject) => {
+    workoutDb.transaction((tx) => {
+      tx.executeSql(
+        `SELECT MAX(date) as maxDate FROM workout_plans`,
+        [],
+        (_, { rows }) => {
+          if (rows._array && rows._array.length > 0) {
+            resolve(rows._array[0].maxDate);
+          } else {
+            resolve(null);
+          }
+        },
+        (_, error) => {
+          console.log("Error fetching the most recent date from database:", error);
+          reject(error);
+        }
+      );
+    });
+  });
+};
+
+
 const getWorkoutPlanFromDb = async (startOfWeek, endOfWeek) => {
   return new Promise((resolve, reject) => {
     const sqlStart = Date.now();
@@ -93,13 +116,17 @@ export default function Workout() {
 
   // get last two weeks workout plans
   const copyLastTwoWeeksWorkoutPlan = async () => {
-    const twoWeeksAgo = moment().subtract(2, 'weeks').format('YYYY-MM-DD');
-    const today = moment().format('YYYY-MM-DD');
-    const workoutPlanFromDb = await getWorkoutPlanFromDb(twoWeeksAgo, today);
-    setCopiedWorkoutPlan(workoutPlanFromDb);
+    const mostRecentDate = await getMostRecentDateFromDb();
+    if (mostRecentDate) {
+      const twoWeeksBeforeRecent = moment(mostRecentDate).subtract(2, 'weeks').format('YYYY-MM-DD');
+      const workoutPlanFromDb = await getWorkoutPlanFromDb(twoWeeksBeforeRecent, mostRecentDate);
+      setCopiedWorkoutPlan(workoutPlanFromDb);
+    } else {
+      console.log("No dates found in the database.");
+    }
   };
 
-  const handleWorkoutPlans = async (startIndex, endIndex, data) => {
+  const handleWorkoutPlans = async (startIndex, endIndex, data, dates) => {
     // Extract workout plan
     let workoutPlanStr = data.content.slice(startIndex + 7, endIndex);
   
@@ -118,6 +145,34 @@ export default function Workout() {
       console.error('Error parsing workout plan:', error);
       return;
     }
+
+    // Get the first date from the workout plan
+  const firstDateFromPlan = Object.keys(workoutPlanObj)[0];
+
+  // Check if the first date is in the dates
+  if (!dates.includes(firstDateFromPlan)) {
+    // Get the first date from the dates
+    const firstDateFromList = dates[0];
+    // Create a new workout plan object with updated dates
+    const updatedWorkoutPlanObj = {};
+    const originalDates = [];
+    const newDates = [];
+    for (const date in workoutPlanObj) {
+      const dateObj = new Date(date);
+      const daysDiff = Math.floor((dateObj - new Date(firstDateFromPlan)) / (1000 * 60 * 60 * 24));
+      const newDateObj = new Date(firstDateFromList);
+      newDateObj.setDate(newDateObj.getDate() + daysDiff);
+      const newDate = newDateObj.toISOString().split('T')[0];
+      updatedWorkoutPlanObj[newDate] = workoutPlanObj[date];
+      // Store original and new dates for logging
+      originalDates.push(date);
+      newDates.push(newDate);
+    }
+    // Update the workoutPlanObj to be the updatedWorkoutPlanObj
+    workoutPlanObj = updatedWorkoutPlanObj;
+
+    console.log(`Dates needed to be changed. Changed: ${originalDates} to ${newDates}`);
+  }
   
     // Insert the new plans
     workoutDb.transaction(tx => {
@@ -142,7 +197,9 @@ export default function Workout() {
   const fetchAndSaveWorkoutPlans = async () => {
     // prepare the existing plan and the dates for the next two weeks
     const lastPlanDate = Object.keys(copiedWorkoutPlan).sort().slice(-1)[0];
+    console.log('Last date of the plan:' + lastPlanDate)
     const nextStartDate = moment(lastPlanDate).add(1, 'days').format('YYYY-MM-DD');
+    console.log('First date of the new plan:' + nextStartDate)
     const dates = [];
     for (let i = 0; i < 14; i++) {
       dates.push(moment(nextStartDate).add(i, 'days').format('YYYY-MM-DD'));
@@ -183,7 +240,7 @@ export default function Workout() {
       const workoutEndIndex = data.content.indexOf('!wknd!');
   
       if (workoutStartIndex !== -1 && workoutEndIndex !== -1) {
-        data = await handleWorkoutPlans(workoutStartIndex, workoutEndIndex, data);
+        data = await handleWorkoutPlans(workoutStartIndex, workoutEndIndex, data, dates);
       }
   
       return data;
@@ -195,14 +252,17 @@ export default function Workout() {
   
   
 
-  // check last date in the plan
   const checkLastDate = async () => {
-    if (!Object.keys(copiedWorkoutPlan).length) return;
-    let lastDate = Object.keys(copiedWorkoutPlan).sort()[Object.keys(copiedWorkoutPlan).length-1];
-    let isGreaterThanSevenDays = moment(lastDate).isAfter(moment().add(7, 'days'));
-    if (!isGreaterThanSevenDays) {
-      // Fetch and save new workout plans
-      await fetchAndSaveWorkoutPlans();
+    const lastDate = await getMostRecentDateFromDb();
+    if (lastDate) {
+      console.log('The last date now is: ' + lastDate)
+      let isGreaterThanSevenDays = moment(lastDate).isAfter(moment().add(7, 'days'));
+      if (!isGreaterThanSevenDays) {
+        // Fetch and save new workout plans
+        await fetchAndSaveWorkoutPlans();
+      }
+    } else {
+      console.log("No dates found in the database.");
     }
   };
 
@@ -234,30 +294,33 @@ export default function Workout() {
     return null;
   }, []);
 
-  React.useEffect(() => {
-    const fetchWorkoutPlan = async () => {
-      const fetchStart = Date.now();
+  useFocusEffect(
+    React.useCallback(() => {
+      const fetchWorkoutPlan = async () => {
+        const fetchStart = Date.now();
+    
+        try {
+          const workoutPlanFromDb = await getWorkoutPlanFromDb(currentWeek.start, currentWeek.end);
+          
+          const setStart = Date.now();
+          setWorkoutPlan(workoutPlanFromDb);
+          const setEnd = Date.now();
+          console.log("Set state time: " + (setEnd - setStart) + "ms");
   
-      try {
-        const workoutPlanFromDb = await getWorkoutPlanFromDb(currentWeek.start, currentWeek.end);
-        
-        const setStart = Date.now();
-        setWorkoutPlan(workoutPlanFromDb);
-        const setEnd = Date.now();
-        console.log("Set state time: " + (setEnd - setStart) + "ms");
-
-        updateWorkoutData(false);
+          updateWorkoutData(false);
+    
+        } catch (error) {
+          console.error("Error fetching workout plan from database:", error);
+        }
+        const fetchEnd = Date.now();
   
-      } catch (error) {
-        console.error("Error fetching workout plan from database:", error);
+        console.log("Total Fetching Workout Plan time: " + (fetchEnd - fetchStart) + "ms");
+      };
+      if (workoutDataChanged) {
+        fetchWorkoutPlan();
       }
-      const fetchEnd = Date.now();
-
-console.log("Total Fetching Workout Plan time: " + (fetchEnd - fetchStart) + "ms");
-};
-if (workoutDataChanged) {
-  fetchWorkoutPlan();
-}}, [workoutDataChanged, currentWeek]);
+    }, [workoutDataChanged, currentWeek])
+  );
 
 return (
 <View style={styles.container}>
