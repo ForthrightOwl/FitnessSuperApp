@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useContext } from 'react';
 import { GiftedChat, Bubble, InputToolbar, Send } from 'react-native-gifted-chat';
 import { TouchableOpacity, Text, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SQLite from 'expo-sqlite';
 import { WorkoutContext } from '../WorkoutContext';
 import { NutritionContext } from '../NutritionContext';
+import { useFocusEffect } from '@react-navigation/native';
 
 // Initialize the databases
 const workoutDb = SQLite.openDatabase('workout_plan.db');
@@ -38,7 +39,7 @@ const generateDateList = () => {
 
   const startDate = new Date();
   const endDate = new Date();
-  endDate.setDate(startDate.getDate() + 14); // Add 2 weeks (14 days) to the current date
+  endDate.setDate(startDate.getDate() + 4); // Add 2 weeks (14 days) to the current date
 
   const dateList = [];
 
@@ -51,16 +52,16 @@ const generateDateList = () => {
 
 const dateList = generateDateList();
 
-let initialMessage = `You are now BodyGenius, a personal fitness super assistant. Your objective is to help your client achieve their fitness goals by creating professional and scientific workouts and meal plans, and by being a useful resource to answer any fitness related questions. Ask lots of questions to understand your client and personalize your advice to them. Consider their gender, age, experience, goals, schedule preferences and other similar important factors when creating their workout and nutrition plans.
+let initialMessage = `You are BodyGenius, a friendly and supportive personal fitness trainer.
 
 You are a part of an app and it is essential you follow these instructions EXACTLY for the app to function properly:
-1. When specifying workouts always begin with a token !wkst! and end with a token !wknd! , specify the plan in JSON format with stringified date as the key and an array containing objects with title and content properties as content. Here is an example: !wkst!{“YYYY-MM-DD”: [{“title": title for the section, "content": workout specifics}], … rest of the dates}!wknd!, for each of the following dates:${dateList}. Your workout plan will be stripped out of the message displayed to the user, invite them to review the plan in the workouts tab.
-2. Follow the same format for nutrition, only with tokens !ntst! to start and !ntnd! to end. Specify each meal for every date.
-3. There is a progress tracking screen, so if the client asks about tracking their progress redirect them there.
+When specifying workouts always begin with a token !wkst! and end with a token !wknd! , specify the plan in JSON format with stringified date as the key and an array containing objects with title and content properties as content. Here is an example: !wkst!{“YYYY-MM-DD”: [{“title": title for the section, "content": workout specifics}], … rest of the dates}!wknd!, for each of the following dates:${dateList}. Your workout plan will be removed from the message when displayed to the user, do not say here is the plan, instead tell them to see the plan in their workout agenda. Never provide plans longer than two weeks!
+When specifying nutrition plans always begin with a token !ntst! and end with a token !ntnd! , specify the plan in JSON format with stringified date as the key and an array containing objects with title and content properties as content. Here is an example: !wkst!{“YYYY-MM-DD”: [{“title": title for the section, "content": workout specifics}], … rest of the dates}!wknd!, for each of the following dates:${dateList}. Your workout plan will be from the message when displayed to the user, do not say here is the plan, instead tell them to see the plan in their nutrition agenda. Never provide plans longer than two weeks!
+There is a progress tracking screen, so if the client asks about tracking their progress redirect them there.
 
-Provide plentiful detail in workout and nutrition plans. Always encourage your client to exercise their own judgement in regards to their health. When giving exercise form advice, always provide a link to an instructional video.
+Your objective is to help your client achieve their fitness goals by creating professional and scientificially backed workouts or meal plans, and by being a useful resource to answer any fitness related questions. Ask lots of questions to understand your client and personalize your advice to them. Always consider their gender, age, experience, goals, schedule preferences and other similar important factors. Listen to your clients and tailor your responses to their wishes.
 
-If you are asked to edit an existing workout plan, but the plan is not included, reply !wk?, for the nutrition plan reply !nt?.`
+Provide plentiful detail in workout and nutrition plans. Always encourage your client to exercise their own judgement in regards to their health. When giving exercise form advice, always provide a link to an instructional video. Pay attention to your clients requests and give them what they ask for. Never give them both plans at once.`
 const initialBGMessage = `How can I help you today?`
 
 
@@ -143,7 +144,7 @@ export default function ChatScreen() {
     const lastPlanDate = await getLastPlanDate(db, tableName);
     if (lastPlanDate) {
       const twoWeeksBefore = new Date(lastPlanDate);
-      twoWeeksBefore.setDate(twoWeeksBefore.getDate() - 14);
+      twoWeeksBefore.setDate(twoWeeksBefore.getDate() - 4);
       
       // Convert twoWeeksBefore to a string in the "YYYY-MM-DD" format
       const twoWeeksBeforeStr = twoWeeksBefore.toISOString().split('T')[0];
@@ -155,42 +156,45 @@ export default function ChatScreen() {
     }
   };
   
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        createWorkoutTable();
-        createNutritionTable();
-    
-        const workoutPlan = await getLastPlan(workoutDb, 'workout_plans');
-        const nutritionPlan = await getLastPlan(nutritionDb, 'nutrition_plans');
-    
-        let dataMessage = '';
-    
-        if (workoutPlan && nutritionPlan) {
-          dataMessage = "Here is your current workout and nutrition plans: \n\n" 
-                      + "Workout Plan: " + JSON.stringify(workoutPlan) + "\n\n"
-                      + "Nutrition Plan: " + JSON.stringify(nutritionPlan);
-        } else if (workoutPlan) {
-          dataMessage = "Here is your current workout plan: \n\n" 
-                      + "Workout Plan: " + JSON.stringify(workoutPlan);
-        } else if (nutritionPlan) {
-          dataMessage = "Here is your current nutrition plan: \n\n"
-                      + "Nutrition Plan: " + JSON.stringify(nutritionPlan);
-        } else {
-          dataMessage = "You don't have any workout or nutrition plans stored for the last two weeks.";
+  useFocusEffect(
+    React.useCallback(() => {
+      const fetchData = async () => {
+        try {
+          createWorkoutTable();
+          createNutritionTable();
+
+          const workoutPlan = await getLastPlan(workoutDb, 'workout_plans');
+          const nutritionPlan = await getLastPlan(nutritionDb, 'nutrition_plans');
+
+          let dataMessage = '';
+
+          if (workoutPlan && nutritionPlan) {
+            dataMessage = "Here is your current workout and nutrition plans: \n\n" 
+                        + "Workout Plan: " + JSON.stringify(workoutPlan) + "\n\n"
+                        + "Nutrition Plan: " + JSON.stringify(nutritionPlan);
+          } else if (workoutPlan) {
+            dataMessage = "Here is your current workout plan: \n\n" 
+                        + "Workout Plan: " + JSON.stringify(workoutPlan);
+          } else if (nutritionPlan) {
+            dataMessage = "Here is your current nutrition plan: \n\n"
+                        + "Nutrition Plan: " + JSON.stringify(nutritionPlan);
+          } else {
+            dataMessage = "You don't have any workout or nutrition plans stored for the last two weeks.";
+          }
+
+          initialMessage = `${dataMessage}\n\n${initialMessage}`;
+          loadMessagesFromStorage();
+        } catch (error) {
+          console.log(error);
         }
-    
-        initialMessage = `${dataMessage}\n\n${initialMessage}`;
-        loadMessagesFromStorage();
-      } catch (error) {
-        console.log(error);
       }
-    }
-  
-    fetchData();
-  }, []);
-  
-  
+
+      fetchData();
+      return () => {
+        // any cleanup tasks go here
+      };
+    }, [])
+  );
   
 
   const loadMessagesFromStorage = async () => {
@@ -203,7 +207,7 @@ export default function ChatScreen() {
         { role: 'assistant', content: initialBGMessage },
       ];
       setMessages(convertToGiftedChatFormat(initialMessages)); 
-      AsyncStorage.setItem('chatHistory', JSON.stringify([ { role: 'system', content: initialMessage }, ...initialMessages]));
+      AsyncStorage.setItem('chatHistory', JSON.stringify([ { role: 'user', content: initialMessage }, ...initialMessages]));
     }
   };
   
@@ -213,6 +217,7 @@ export default function ChatScreen() {
       { role: 'assistant', content: initialBGMessage },
     ];
     await AsyncStorage.setItem('chatHistory', JSON.stringify(initialMessages));
+    setMessages(convertToGiftedChatFormat(initialMessages)); // Reset the state
   };
 
   const ResetButton = () => (
@@ -259,12 +264,13 @@ export default function ChatScreen() {
   }
 };
 
-const getAIResponse = async (userInput, currentMessages) => {
-  const messages = convertFromGiftedChatFormat(currentMessages);
-  messages.push({ role: 'user', content: userInput });
-  messages.push({ role: 'system', content: initialMessage }); // Add the system message here
 
-  console.log('Sending messages:', JSON.stringify({ messages })); // Added logging
+const getAIResponse = async (userInput, currentMessages) => {
+  const messages = convertFromGiftedChatFormat(currentMessages).reverse();
+  messages.push({ role: 'user', content: userInput });
+  messages.push({ role: 'user', content: initialMessage }); 
+
+  console.log('Sending messages:', JSON.stringify({ messages }));
 
   try {
     const response = await fetch('https://us-central1-centered-carver-385915.cloudfunctions.net/fitnessChatbot', {
@@ -281,25 +287,55 @@ const getAIResponse = async (userInput, currentMessages) => {
     }
 
     let data = await response.json();
-    const workoutStartIndex = data.content.indexOf('!wkst!');
-    const workoutEndIndex = data.content.indexOf('!wknd!');
-    const nutritionStartIndex = data.content.indexOf('!ntst!');
-    const nutritionEndIndex = data.content.indexOf('!ntnd!');
+    let workoutStartIndex = data.content.indexOf('!wkst!');
+    let workoutEndIndex = data.content.indexOf('!wknd!');
+    let nutritionStartIndex = data.content.indexOf('!ntst!');
+    let nutritionEndIndex = data.content.indexOf('!ntnd!');
 
-    if (workoutStartIndex !== -1 && workoutEndIndex !== -1) {
-      data = await handleWorkoutPlans(workoutStartIndex, workoutEndIndex, data);
+    try {
+        // Deep copy the data object
+        let workoutData = JSON.parse(JSON.stringify(data));
+        let nutritionData = JSON.parse(JSON.stringify(data));
+
+        let workoutResult, nutritionResult;
+
+        if (workoutStartIndex !== -1 && workoutEndIndex !== -1) {
+          workoutResult = await handleWorkoutPlans(workoutStartIndex, workoutEndIndex, workoutData);
+        }
+
+        if (nutritionStartIndex !== -1 && nutritionEndIndex !== -1) {
+          nutritionResult = await handleNutritionPlans(nutritionStartIndex, nutritionEndIndex, nutritionData);
+        }
+
+        // If workout data was processed, remove the relevant part from the content.
+        if (workoutResult) {
+          data.content = data.content.slice(0, workoutStartIndex) + data.content.slice(workoutEndIndex + 7);
+          if (nutritionResult) {
+            nutritionStartIndex -= (workoutEndIndex - workoutStartIndex + 7);
+            nutritionEndIndex -= (workoutEndIndex - workoutStartIndex + 7);
+          }
+        }
+
+        // If nutrition data was processed, remove the relevant part from the content.
+        if (nutritionResult) {
+          data.content = data.content.slice(0, nutritionStartIndex) + data.content.slice(nutritionEndIndex + 7);
+        }
+
+        return data;
+
+    } catch (error) {
+      console.log('Error processing incomplete message:', error);
+      return {
+        content: 'Unfortunately, we are not able to process your request right now. Please reset the chat in settings and try again. We apologize for the inconvenience.',
+      };
     }
-
-    if (nutritionStartIndex !== -1 && nutritionEndIndex !== -1) {
-      data = await handleNutritionPlans(nutritionStartIndex, nutritionEndIndex, data);
-    }
-
-    return data;
   } catch (error) {
-    console.error('Error fetching AI response:', error);
+    console.log('Error fetching AI response:', error);
     return 'Sorry, I am unable to process your request at this time.';
   }
 };
+
+
 
 const handleWorkoutPlans = async (startIndex, endIndex, data) => {
   // Extract workout plan
@@ -317,7 +353,7 @@ const handleWorkoutPlans = async (startIndex, endIndex, data) => {
   try {
     workoutPlanObj = JSON.parse(workoutPlanStr);
   } catch (error) {
-    console.error('Error parsing workout plan:', error);
+    console.log('Error parsing workout plan:', error);
     return;
   }
 
@@ -369,19 +405,16 @@ const handleWorkoutPlans = async (startIndex, endIndex, data) => {
               console.log('New workout plan saved successfully.');
             },
             (_, error) => {
-              console.error(`Error saving workout plan to database:`, error);
+              conosle.log.log(`Error saving workout plan to database:`, error);
             }
           );
         });
       },
       (_, error) => {
-        console.error(`Error deleting existing workout plans:`, error);
+        conosle.log.log(`Error deleting existing workout plans:`, error);
       }
     );
   });
-
-  // Remove workout plan from AI response message
-  data.content = data.content.slice(0, startIndex) + data.content.slice(endIndex + 7);
 
   return data;
 };
@@ -403,7 +436,7 @@ const handleNutritionPlans = async (startIndex, endIndex, data) => {
   try {
     nutritionPlanObj = JSON.parse(nutritionPlanStr);
   } catch (error) {
-    console.error('Error parsing nutrition plan:', error);
+    conosle.log.log('Error parsing nutrition plan:', error);
     console.log('Here is the sstring that caused the error:' + nutritionPlanStr)
     return;
   }
@@ -452,23 +485,20 @@ const handleNutritionPlans = async (startIndex, endIndex, data) => {
             `INSERT INTO nutrition_plans (date, plan) VALUES (?, ?);`,
             [date, plan],
             (_, resultSet) => {
-              updateWorkoutData(true),
+              updateNutritionData(true),
               console.log('New nutrition plan saved successfully.');
             },
             (_, error) => {
-              console.error(`Error saving nutrition plan to database:`, error);
+              conosle.log.log(`Error saving nutrition plan to database:`, error);
             }
           );
         });
       },
       (_, error) => {
-        console.error(`Error deleting existing nutrition plans:`, error);
+        conosle.log.log(`Error deleting existing nutrition plans:`, error);
       }
     );
   });
-
-  // Remove nutrition plan from AI response message
-  data.content = data.content.slice(0, startIndex) + data.content.slice(endIndex + 7);
 
   return data;
 };
@@ -487,7 +517,7 @@ const handleNutritionPlans = async (startIndex, endIndex, data) => {
   
 
   const convertFromGiftedChatFormat = (messages) => {
-    return messages.slice().reverse().map(message => ({
+    return messages.slice().map(message => ({
       role: message.user._id === 1 ? 'user' : 'assistant',
       content: message.text,
     }));

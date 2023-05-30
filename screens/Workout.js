@@ -23,7 +23,11 @@ const getMostRecentDateFromDb = () => {
         },
         (_, error) => {
           console.log("Error fetching the most recent date from database:", error);
-          reject(error);
+          if (error.message.includes("no such table")) {
+            resolve(null); // return null if there's no workout_plans table
+          } else {
+            reject(error);
+          }
         }
       );
     });
@@ -68,12 +72,18 @@ const getWorkoutPlanFromDb = async (startOfWeek, endOfWeek) => {
         },
         (_, error) => {
           console.log("Error fetching workouts from database:", error);
-          reject(error);
+          // if error occurs, resolve with empty object
+          if (error.message.includes("no such table")) {
+            resolve({}); // return {} if there's no workout_plans table
+          } else {
+            resolve({});
+          }
         }
       );
     });
   });
 };
+
 
 const WorkoutItem = React.memo(({ title, content }) => {
   return (
@@ -266,21 +276,29 @@ export default function Workout() {
     }
   };
 
+  const lastWorkoutFetchTime = React.useRef(null);
+
   useFocusEffect(
     React.useCallback(() => {
       // async function to be called
       const fetchData = async () => {
-        await copyLastTwoWeeksWorkoutPlan();
-        await checkLastDate();
+        const currentTime = Date.now();
+        // Only run if more than 10 minutes has passed since the last run
+        if (lastWorkoutFetchTime.current === null || currentTime - lastWorkoutFetchTime.current >= 10 * 60 * 1000) {
+          await copyLastTwoWeeksWorkoutPlan();
+          await checkLastDate();
+          // Update the last fetch time
+          lastWorkoutFetchTime.current = Date.now();
+        }
       }
+
+    // run async function
+    fetchData();
   
-      // run async function
-      fetchData();
-    
-      // no cleanup function needed
-      return;
-    }, [])
-  );
+    // no cleanup function needed
+    return;
+  }, [])
+);
 
   const renderItem = useCallback((item) => {
     return <WorkoutItem title={item.title} content={item.content} />;

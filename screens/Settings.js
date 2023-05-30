@@ -1,11 +1,39 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import PrivacyPolicy from '../screens/settingsScreens/privacyPolicy';
 import RequestFeature from '../screens/settingsScreens/requestAFeature';
 import ReportBug from '../screens/settingsScreens/reportABug';
+import * as SQLite from 'expo-sqlite';
+import { WorkoutContext } from '../WorkoutContext';
+import { NutritionContext } from '../NutritionContext';
+
+// Initialize the databases
+const workoutDb = SQLite.openDatabase('workout_plan.db');
+const nutritionDb = SQLite.openDatabase('nutrition_plan.db');
 
 export default function Settings() {
   const [screen, setScreen] = useState('Settings');
+
+  const { updateWorkoutData } = useContext(WorkoutContext);
+  const { updateNutritionData } = useContext(NutritionContext);
+
+  const clearDatabases = () => {
+    workoutDb.transaction(tx => {
+      tx.executeSql('DROP TABLE IF EXISTS workout_plans', [], 
+        () => console.log('Workout Plan database cleared'), 
+        updateWorkoutData(true),
+        (tx, err) => console.log('Error: ' + err)
+      );
+    });
+    
+    nutritionDb.transaction(tx => {
+      tx.executeSql('DROP TABLE IF EXISTS nutrition_plans', [], 
+        () => console.log('Nutrition Plan database cleared'), 
+        updateNutritionData(true),
+        (tx, err) => console.log('Error: ' + err)
+      );
+    });
+  };
 
   if (screen === 'Settings') {
     return (
@@ -18,6 +46,9 @@ export default function Settings() {
         </TouchableOpacity>
         <TouchableOpacity style={styles.button} onPress={() => setScreen('ReportBug')}>
           <Text style={styles.buttonText}>Report a Bug</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.resetButton} onPress={clearDatabases}>
+          <Text style={styles.buttonText}>Reset Databases</Text>
         </TouchableOpacity>
       </View>
     );
@@ -56,5 +87,13 @@ const styles = StyleSheet.create({
   buttonText: {
     color: '#FFFFFF',
     fontSize: 16,
+  },
+  resetButton: {
+    backgroundColor: 'red',
+    padding: 12,
+    borderRadius: 10,
+    marginVertical: 10,
+    width: '80%',
+    alignItems: 'center',
   },
 });
