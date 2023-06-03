@@ -6,7 +6,7 @@ import InputView from './tracking view components/InputView';
 import * as SQLite from 'expo-sqlite';
 
 const screenWidth = Dimensions.get('window').width;
-const screenHeight = Dimensions.get('window').height * 1.3;
+const screenHeight = Dimensions.get('window').height * 1.4;
 const db = SQLite.openDatabase('WeightTracker.db');
 
 const Tracking = () => {

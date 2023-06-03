@@ -208,7 +208,7 @@ export default function Workout() {
     // prepare the existing plan and the dates for the next two weeks
     const lastPlanDate = Object.keys(copiedWorkoutPlan).sort().slice(-1)[0];
     console.log('Last date of the plan:' + lastPlanDate)
-    const nextStartDate = moment(lastPlanDate).add(1, 'days').format('YYYY-MM-DD');
+    const nextStartDate = moment(lastPlanDate).add(1, 'days').day(1).format('YYYY-MM-DD');
     console.log('First date of the new plan:' + nextStartDate)
     const dates = [];
     for (let i = 0; i < 14; i++) {
@@ -232,6 +232,7 @@ export default function Workout() {
     ];
   
     try {
+      console.log("Requested plan extension with: " + messages)
       const response = await fetch('https://us-central1-centered-carver-385915.cloudfunctions.net/fitnessChatbot', {
         method: 'POST',
         headers: {

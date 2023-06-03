@@ -39,30 +39,38 @@ const generateDateList = () => {
 
   const startDate = new Date();
   const endDate = new Date();
-  endDate.setDate(startDate.getDate() + 4); // Add 2 weeks (14 days) to the current date
+
+  // If today is not Monday, adjust startDate to the next Monday
+  if (startDate.getDay() !== 1) {
+    const daysUntilNextMonday = ((7 - startDate.getDay()) % 7 + 1) % 7;
+    startDate.setDate(startDate.getDate() + daysUntilNextMonday);
+  }
+
+  endDate.setDate(startDate.getDate() + 13); // Add 2 weeks (14 days) to the current date (start from Monday)
 
   const dateList = [];
 
-  for (let currentDate = startDate; currentDate <= endDate; currentDate.setDate(currentDate.getDate() + 1)) {
+  for (let currentDate = new Date(startDate); currentDate <= endDate; currentDate.setDate(currentDate.getDate() + 1)) {
     dateList.push(formatDate(new Date(currentDate)));
   }
 
   return dateList;
 };
 
+
 const dateList = generateDateList();
 
 let initialMessage = `You are BodyGenius, a friendly and supportive personal fitness trainer.
 
 You are a part of an app and it is essential you follow these instructions EXACTLY for the app to function properly:
-When specifying workouts always begin with a token !wkst! and end with a token !wknd! , specify the plan in JSON format with stringified date as the key and an array containing objects with title and content properties as content. Here is an example: !wkst!{“YYYY-MM-DD”: [{“title": title for the section, "content": workout specifics}], … rest of the dates}!wknd!, for each of the following dates:${dateList}. Your workout plan will be removed from the message when displayed to the user, do not say here is the plan, instead tell them to see the plan in their workout agenda. Never provide plans longer than two weeks!
-When specifying nutrition plans always begin with a token !ntst! and end with a token !ntnd! , specify the plan in JSON format with stringified date as the key and an array containing objects with title and content properties as content. Here is an example: !wkst!{“YYYY-MM-DD”: [{“title": title for the section, "content": workout specifics}], … rest of the dates}!wknd!, for each of the following dates:${dateList}. Your workout plan will be from the message when displayed to the user, do not say here is the plan, instead tell them to see the plan in their nutrition agenda. Never provide plans longer than two weeks!
+When specifying workouts always begin with a token !wkst! and end with a token !wknd! , specify the plan in JSON format with stringified date as the key and an array containing objects with title and content properties as content. Here is an example: !wkst!{“YYYY-MM-DD”: [{“title": title for the section, "content": workout specifics}], … rest of the dates}!wknd!, for each of the following dates:${dateList}. Tell the user to see the workout plan in the workouts tab. Never provide plans longer than two weeks!
+When specifying nutrition plans always begin with a token !ntst! and end with a token !ntnd! , specify the plan in JSON format with stringified date as the key and an array containing objects with title and content properties as content. Here is an example: !wkst!{“YYYY-MM-DD”: [{“title": title for the section, "content": workout specifics}], … rest of the dates}!wknd!, for each of the following dates:${dateList}. Tell the user to see the nutrition plan in the nutrition tab. Never provide plans longer than two weeks!
 There is a progress tracking screen, so if the client asks about tracking their progress redirect them there.
 
-Your objective is to help your client achieve their fitness goals by creating professional and scientificially backed workouts or meal plans, and by being a useful resource to answer any fitness related questions. Ask lots of questions to understand your client and personalize your advice to them. Always consider their gender, age, experience, goals, schedule preferences and other similar important factors. Listen to your clients and tailor your responses to their wishes.
+Your objective is to help your client achieve their fitness goals by creating professional and engaging workouts or meal plans, and by being a useful resource to answer any fitness related questions. Ask a lot of questions to understand your client and personalize your advice to them. Always ensure you have information regarding your client’s gender, age, experience, goals, schedule preferences and other similar important factors before writing their plans. Listen to your clients and tailor your responses to their wishes.
 
-Provide plentiful detail in workout and nutrition plans. Always encourage your client to exercise their own judgement in regards to their health. When giving exercise form advice, always provide a link to an instructional video. Pay attention to your clients requests and give them what they ask for. Never give them both plans at once.`
-const initialBGMessage = `How can I help you today?`
+Provide plentiful detail in workout and nutrition plans. Always encourage your client to exercise their own judgement in regards to their health. When giving exercise form advice, always provide a link to an instructional video. Never give them both plans at once.`
+const initialBGMessage = `Hey there! I'm BodyGenius, your personal fitness super assistant. How can I help you achieve your fitness goals today?`
 
 
 
@@ -182,7 +190,7 @@ export default function ChatScreen() {
             dataMessage = "You don't have any workout or nutrition plans stored for the last two weeks.";
           }
 
-          initialMessage = `${dataMessage}\n\n${initialMessage}`;
+          mainMessage = `${dataMessage}\n\n${initialMessage}`;
           loadMessagesFromStorage();
         } catch (error) {
           console.log(error);
@@ -207,7 +215,7 @@ export default function ChatScreen() {
         { role: 'assistant', content: initialBGMessage },
       ];
       setMessages(convertToGiftedChatFormat(initialMessages)); 
-      AsyncStorage.setItem('chatHistory', JSON.stringify([ { role: 'user', content: initialMessage }, ...initialMessages]));
+      AsyncStorage.setItem('chatHistory', JSON.stringify([ { role: 'user', content: mainMessage }, ...initialMessages]));
     }
   };
   
@@ -268,7 +276,7 @@ export default function ChatScreen() {
 const getAIResponse = async (userInput, currentMessages) => {
   const messages = convertFromGiftedChatFormat(currentMessages).reverse();
   messages.push({ role: 'user', content: userInput });
-  messages.push({ role: 'user', content: initialMessage }); 
+  messages.push({ role: 'user', content: mainMessage }); 
 
   console.log('Sending messages:', JSON.stringify({ messages }));
 
@@ -283,7 +291,11 @@ const getAIResponse = async (userInput, currentMessages) => {
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`API responded with an error: ${errorText}`);
+      if (errorText === "upstream request timeout") {
+        return 'Oops! We apologize for the inconvenience. Our servers are currently experiencing high traffic, making it difficult to process your request. Please reset your chat history in the settings and try again later. We appreciate your patience and look forward to assisting you soon. Keep up the great work on your fitness journey!';
+      } else {
+        throw new Error(`API responded with an error: ${errorText}`);
+      }
     }
 
     let data = await response.json();

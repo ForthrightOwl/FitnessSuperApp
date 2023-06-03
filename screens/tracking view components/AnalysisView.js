@@ -118,7 +118,7 @@ const AnalysisView = ({ measurements }) => {
     <View style={styles.container}>
       <View style={styles.chartContainer}>
         <Text style={styles.heading}>Weight</Text>
-        <Text style={styles.body}>Tracking your weight can be a great way to objectively track your progress. The chart below plots how your weight changed over the past month.</Text>
+        <Text style={styles.body}>Track your progress with this line chart that displays your weight changes over time. Monitor your journey and see the positive impact of your efforts as you move closer to your fitness goals.</Text>
         <View style={styles.chartWrapper}>
         <View style={{ flexDirection: 'row', height: '80%' }}>
           <YAxis
@@ -157,7 +157,7 @@ const AnalysisView = ({ measurements }) => {
         </View>
       </View>
       <View style={styles.chartContainer}>
-        <Text style={styles.body}>To compliment the weight plot, the bar chart below shows how your weight changed from week to week. Looking at your weight this way enables you to grasp the momentum and consistency of changes in your weight.</Text>
+        <Text style={styles.body}>Stay motivated and keep an eye on your progress with this bar chart showcasing week-to-week weight changes. Easily visualize your achievements and identify patterns that can help you make informed adjustments to your fitness routine.</Text>
         <View style={styles.chartWrapper}>
           {/* Weekly Data Chart */}
           <View style={{ flexDirection: 'row', height: '80%' }}>
