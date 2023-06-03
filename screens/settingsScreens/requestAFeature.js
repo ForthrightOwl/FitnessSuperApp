@@ -15,6 +15,7 @@ export default function RequestFeature({ goBack }) {
         <Text style={styles.buttonText}>Back</Text>
       </TouchableOpacity>
       <Text style={styles.title}>Request a Feature</Text>
+      <Text style={styles.body}>Your feedback is valuable to us! Is there a specific feature you'd love to see in our app? We'd love to hear your ideas and suggestions. Share your thoughts on what would make your fitness journey even better!</Text>
       <TextInput
         value={text}
         onChangeText={setText}
@@ -60,10 +61,21 @@ const styles = StyleSheet.create({
     alignItems:'center'
   },
   title: {
-    fontSize: 20,
-    margin:20,
-    color:'#2f4f4f',
-    fontWeight:'bold'
+    fontSize: 24,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    color: '#2f4f4f',
+    marginTop: 10,
+    fontFamily: 'Helvetica',
+  },
+  body: {
+    fontSize: 16,
+    textAlign: 'left',
+    color: '#3a3a3a',
+    marginTop: 10,
+    marginBottom:10,
+    fontFamily: 'Helvetica',
+    padding:10
   },
   inputBox: {
     borderColor:'#2f4f4f',
