@@ -116,9 +116,9 @@ const AnalysisView = ({ measurements }) => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.chartContainer}>
-        <Text style={styles.heading}>Weight</Text>
+      <Text style={styles.heading}>Weight Tracking</Text>
         <Text style={styles.body}>Track your progress with this line chart that displays your weight changes over time. Monitor your journey and see the positive impact of your efforts as you move closer to your fitness goals.</Text>
+      <View style={styles.chartContainer}>
         <View style={styles.chartWrapper}>
         <View style={{ flexDirection: 'row', height: '80%' }}>
           <YAxis
@@ -156,35 +156,42 @@ const AnalysisView = ({ measurements }) => {
         </View>
         </View>
       </View>
+      <Text style={styles.body}>Stay motivated and keep an eye on your progress with this bar chart showcasing week-to-week weight changes. Easily visualize your achievements and identify patterns that can help you make informed adjustments to your fitness routine.</Text>
       <View style={styles.chartContainer}>
-        <Text style={styles.body}>Stay motivated and keep an eye on your progress with this bar chart showcasing week-to-week weight changes. Easily visualize your achievements and identify patterns that can help you make informed adjustments to your fitness routine.</Text>
-        <View style={styles.chartWrapper}>
-          {/* Weekly Data Chart */}
-          <View style={{ flexDirection: 'row', height: '80%' }}>
+      <View style={styles.chartWrapper}>
+    <View style={{ flexDirection: 'row', height: '80%' }}>
+        <YAxis
+            data={chartData}
+            contentInset={{ top: 10, bottom: 10 }}
+            svg={{ fontSize: 10, fill: 'grey' }}
+        />
+        <View style={{ flex: 1 }}>
             <BarChart
-              style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }}
-              data={chartData}
-              svg={{
-                fill: 'rgb(47, 79, 79)',
-                borderRadius: 10,
-              }}
-              contentInset={{ top: 10, bottom: 10 }}
-              spacingInner={0.5}
+                style={{ flex: 1 }}
+                data={chartData}
+                svg={{
+                    fill: 'rgb(47, 79, 79)',
+                    borderRadius: 10,
+                }}
+                contentInset={{ top: 10, bottom: 10 }}
+                spacingInner={0.5}
             >
-              <Grid />
-              {chartData.map((value, index) => (
-                <Label key={index} x={(_, index) => x(index)} y={(value) => y(value)} value={value} />
-              ))}
+                <Grid />
+                {chartData.map((value, index) => (
+                    <Label key={index} x={(_, index) => x(index)} y={(value) => y(value)} value={value} />
+                ))}
             </BarChart>
             <XAxis
-              style={{ position: 'absolute', bottom: -20, left: 0, right: 0 }}
-              data={chartData}
-              formatLabel={(value, index) => chartLabels[index]}
-              contentInset={{ left: 30, right: 30 }}
-              svg={{ fontSize: 12, fill: 'grey' }}
+                style={{ position: 'absolute', bottom: -20, left: 0, right: 0 }}
+                data={chartData}
+                formatLabel={(value, index) => chartLabels[index]}
+                contentInset={{ left: 30, right: 30 }}
+                svg={{ fontSize: 12, fill: 'grey' }}
             />
-          </View>
         </View>
+    </View>
+</View>
+
       </View>
     </View>
   );
@@ -219,17 +226,18 @@ heading: {
   fontSize: 24,
   fontWeight: 'bold',
   textAlign: 'center',
-  color: '#ffffff',
+  color: '#3a3a3a',
   marginTop: 10,
-  fontFamily: 'Helvetica'
+  fontFamily: 'Helvetica',
 },
 body: {
   fontSize: 16,
   textAlign: 'left',
-  color: '#ffffff',
+  color: '#3a3a3a',
   marginTop: 10,
   marginBottom:10,
-  fontFamily: 'Helvetica'
+  fontFamily: 'Helvetica',
+  padding:10
 },
 });
 

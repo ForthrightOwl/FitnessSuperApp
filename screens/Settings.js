@@ -6,6 +6,7 @@ import ReportBug from '../screens/settingsScreens/reportABug';
 import * as SQLite from 'expo-sqlite';
 import { WorkoutContext } from '../WorkoutContext';
 import { NutritionContext } from '../NutritionContext';
+import { ResetChatContext } from '../ResetChatContext';
 
 // Initialize the databases
 const workoutDb = SQLite.openDatabase('workout_plan.db');
@@ -16,6 +17,7 @@ export default function Settings() {
 
   const { updateWorkoutData } = useContext(WorkoutContext);
   const { updateNutritionData } = useContext(NutritionContext);
+  const { setResetChat } = useContext(ResetChatContext);
 
   const clearDatabases = () => {
     workoutDb.transaction(tx => {
@@ -35,6 +37,10 @@ export default function Settings() {
     });
   };
 
+  const resetChatHistory = () => {
+    setResetChat(true);
+  };
+
   if (screen === 'Settings') {
     return (
       <View style={styles.container}>
@@ -48,7 +54,10 @@ export default function Settings() {
           <Text style={styles.buttonText}>Report a Bug</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.resetButton} onPress={clearDatabases}>
-          <Text style={styles.buttonText}>Reset Databases</Text>
+          <Text style={styles.buttonText}>Delete Workout & Nutrition Plans</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.resetButton} onPress={resetChatHistory}> 
+          <Text style={styles.buttonText}>Delete Chat History</Text>
         </TouchableOpacity>
       </View>
     );
@@ -89,7 +98,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   resetButton: {
-    backgroundColor: 'red',
+    backgroundColor: '#4f2f2f',
     padding: 12,
     borderRadius: 10,
     marginVertical: 10,

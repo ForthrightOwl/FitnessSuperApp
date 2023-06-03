@@ -6,6 +6,7 @@ import * as SQLite from 'expo-sqlite';
 import { WorkoutContext } from '../WorkoutContext';
 import { NutritionContext } from '../NutritionContext';
 import { useFocusEffect } from '@react-navigation/native';
+import { ResetChatContext } from '../ResetChatContext';
 
 // Initialize the databases
 const workoutDb = SQLite.openDatabase('workout_plan.db');
@@ -75,6 +76,17 @@ const initialBGMessage = `Hey there! I'm BodyGenius, your personal fitness super
 
 
 export default function ChatScreen() {
+  const { resetChat, setResetChat } = useContext(ResetChatContext);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      if (resetChat) {
+        resetChatHistory();
+        setResetChat(false);
+      }
+    }, [resetChat])
+  );
+
   const [messages, setMessages] = useState([]);
   const [isAssistantTyping, setIsAssistantTyping] = useState(false);
 
@@ -227,21 +239,6 @@ export default function ChatScreen() {
     await AsyncStorage.setItem('chatHistory', JSON.stringify(initialMessages));
     setMessages(convertToGiftedChatFormat(initialMessages)); // Reset the state
   };
-
-  const ResetButton = () => (
-    <TouchableOpacity
-      style={{
-        backgroundColor: '#ff0000',
-        paddingHorizontal: 10,
-        paddingVertical: 5,
-        borderRadius: 20,
-        margin: 10,
-      }}
-      onPress={resetChatHistory}
-    >
-      <Text style={{ color: '#ffffff' }}>Reset Chat</Text>
-    </TouchableOpacity>
-  );
 
   const onSend = async (newMessages = []) => {
   const newMessage = {
@@ -552,7 +549,6 @@ React.useEffect(() => {
 
 return (
   <View style={{ flex: 1 }}>
-    <ResetButton />
     <GiftedChat
       messages={messages}
       onSend={newMessages => onSend(newMessages)}
