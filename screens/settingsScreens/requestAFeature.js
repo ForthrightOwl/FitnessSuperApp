@@ -1,12 +1,44 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, StyleSheet, TouchableOpacity } from 'react-native';
+import { addDoc, collection } from 'firebase/firestore';
+import { firestore } from '../../firebaseConfig'; 
+import Toast from 'react-native-toast-message';
 
 export default function RequestFeature({ goBack }) {
   const [text, setText] = useState('');
 
+  const submitRequest = async (featureRequest) => {
+    try {
+      await addDoc(collection(firestore, 'featureRequests'), {
+        text: featureRequest,
+        timestamp: new Date().toISOString(),
+      });
+      console.log('Request added!');
+    } catch (e) {
+      console.error('Error adding document: ', e);
+    }
+  };
+
   const handleSubmit = () => {
-    // Send the text to the email address.
-    setText('');
+    submitRequest(text)
+      .then(() => {
+        Toast.show({
+          type: 'success',
+          position: 'bottom',
+          text1: 'Success',
+          text2: 'Your feature request has been submitted successfully!',
+        });
+        setText('');
+      })
+      .catch((error) => {
+        Toast.show({
+          type: 'error',
+          position: 'bottom',
+          text1: 'Error',
+          text2: 'There was an issue submitting your feature request.',
+        });
+        console.error('Error submitting request: ', error);
+      });
   };
 
   return (
