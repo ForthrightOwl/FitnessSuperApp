@@ -1,4 +1,3 @@
-import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer } from '@react-navigation/native';
@@ -11,7 +10,7 @@ import Settings from './screens/Settings';
 import { WorkoutProvider } from './WorkoutContext'; 
 import { NutritionProvider } from './NutritionContext'; 
 import { ResetProvider } from './ResetChatContext';
-import * as firebase from 'firebase';
+import { initializeApp } from 'firebase/app';
 import 'firebase/firestore';
 
 // Replace the following with your app's Firebase project configuration
@@ -25,13 +24,7 @@ const firebaseConfig = {
   measurementId: "G-NSWVFRK6N3"
 };
 
-if (!firebase.apps.length) {
-  firebase.initializeApp(firebaseConfig);
-} else {
-  firebase.app(); // if already initialized, use that one
-}
-
-const db = firebase.firestore();
+const app = initializeApp(firebaseConfig);
 
 const Tab = createBottomTabNavigator();
 
