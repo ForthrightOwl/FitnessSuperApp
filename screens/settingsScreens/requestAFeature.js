@@ -25,8 +25,7 @@ export default function RequestFeature({ goBack }) {
         Toast.show({
           type: 'success',
           position: 'bottom',
-          text1: 'Success',
-          text2: 'Your feature request has been submitted successfully!',
+          text1: 'Feature successfully requested!',
         });
         setText('');
       })
