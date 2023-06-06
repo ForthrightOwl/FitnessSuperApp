@@ -10,7 +10,7 @@ import Settings from './screens/Settings';
 import { WorkoutProvider } from './WorkoutContext'; 
 import { NutritionProvider } from './NutritionContext'; 
 import { ResetProvider } from './ResetChatContext';
-
+import Toast from 'react-native-toast-message';
 
 const Tab = createBottomTabNavigator();
 
@@ -118,6 +118,7 @@ export default function App() {
   return (
     <View style={styles.container}>
       <MyTabs />
+      <Toast />
     </View>
   );
 }
