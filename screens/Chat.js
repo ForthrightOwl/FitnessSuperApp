@@ -68,7 +68,7 @@ When specifying workouts always begin with a token !wkst! and end with a token !
 When specifying nutrition plans always begin with a token !ntst! and end with a token !ntnd! , specify the plan in JSON format with stringified date as the key and an array containing objects with title and content properties as content. Here is an example: !wkst!{“YYYY-MM-DD”: [{“title": title for the section, "content": workout specifics}], … rest of the dates}!wknd!, for each of the following dates:${dateList}. Tell the user to see the nutrition plan in the nutrition tab. Never provide plans longer than two weeks!
 There is a progress tracking screen, so if the client asks about tracking their progress redirect them there.
 
-Your objective is to help your client achieve their fitness goals by creating professional and engaging workouts or meal plans, and by being a useful resource to answer any fitness related questions. Ask a lot of questions to understand your client and personalize your advice to them. Always ensure you have information regarding your client’s gender, age, experience, goals, schedule preferences and other similar important factors before writing their plans. Listen to your clients and tailor your responses to their wishes.
+Your objective is to help your client achieve their fitness goals by creating professional and diverse non repetitive workouts or meal plans, and by being a useful resource to answer any fitness related questions. Ask a lot of questions to understand your client and personalize your advice to them. Always ensure you have information regarding your client’s gender, age, experience, goals, schedule preferences and other similar important factors before writing their plans. Listen to your clients and tailor your responses to their wishes.
 
 Provide plentiful detail in workout and nutrition plans. Always encourage your client to exercise their own judgement in regards to their health. When giving exercise form advice, always provide a link to an instructional video. Never give them both plans at once.`
 const initialBGMessage = `Hey there! I'm BodyGenius, your personal fitness super assistant. How can I help you achieve your fitness goals today?`
@@ -302,19 +302,26 @@ const getAIResponse = async (userInput, currentMessages) => {
     let nutritionEndIndex = data.content.indexOf('!ntnd!');
 
     try {
-        // Deep copy the data object
-        let workoutData = JSON.parse(JSON.stringify(data));
-        let nutritionData = JSON.parse(JSON.stringify(data));
-
-        let workoutResult, nutritionResult;
-
-        if (workoutStartIndex !== -1 && workoutEndIndex !== -1) {
-          workoutResult = await handleWorkoutPlans(workoutStartIndex, workoutEndIndex, workoutData);
+      // Deep copy the data object
+      let workoutData = JSON.parse(JSON.stringify(data));
+      let nutritionData = JSON.parse(JSON.stringify(data));
+  
+      let workoutResult, nutritionResult;
+  
+      if (workoutStartIndex !== -1 && workoutEndIndex !== -1) {
+        workoutResult = await handleWorkoutPlans(workoutStartIndex, workoutEndIndex, workoutData);
+      } else if (workoutStartIndex !== -1) {
+        data.content = data.content.slice(0, workoutStartIndex);
+      }
+  
+      if (nutritionStartIndex !== -1 && nutritionEndIndex !== -1) {
+        nutritionResult = await handleNutritionPlans(nutritionStartIndex, nutritionEndIndex, nutritionData);
+      } else if (nutritionStartIndex !== -1) {
+        if (workoutResult) {
+          nutritionStartIndex -= (workoutEndIndex - workoutStartIndex + 7);
         }
-
-        if (nutritionStartIndex !== -1 && nutritionEndIndex !== -1) {
-          nutritionResult = await handleNutritionPlans(nutritionStartIndex, nutritionEndIndex, nutritionData);
-        }
+        data.content = data.content.slice(0, nutritionStartIndex);
+      }
 
         // If workout data was processed, remove the relevant part from the content.
         if (workoutResult) {
@@ -340,7 +347,9 @@ const getAIResponse = async (userInput, currentMessages) => {
     }
   } catch (error) {
     console.log('Error fetching AI response:', error);
-    return 'Sorry, I am unable to process your request at this time.';
+    return {
+      content: 'Oops! We encountered an issue while contacting our servers. Please check your network connection and try again. We apologize for any inconvenience caused and appreciate your understanding.',
+    };
   }
 };
 
@@ -348,7 +357,7 @@ const getAIResponse = async (userInput, currentMessages) => {
 
 const handleWorkoutPlans = async (startIndex, endIndex, data) => {
   // Extract workout plan
-  let workoutPlanStr = data.content.slice(startIndex + 7, endIndex);
+  let workoutPlanStr = data.content.slice(startIndex + 7, endIndex).trim();
 
   // Ensure that the extracted string is wrapped in curly braces
   if (!workoutPlanStr.startsWith('{')) {

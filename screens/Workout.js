@@ -125,20 +125,22 @@ export default function Workout() {
   const [copiedWorkoutPlan, setCopiedWorkoutPlan] = React.useState({});
 
   // get last two weeks workout plans
-  const copyLastTwoWeeksWorkoutPlan = async () => {
-    const mostRecentDate = await getMostRecentDateFromDb();
-    if (mostRecentDate) {
-      const twoWeeksBeforeRecent = moment(mostRecentDate).subtract(2, 'weeks').format('YYYY-MM-DD');
-      const workoutPlanFromDb = await getWorkoutPlanFromDb(twoWeeksBeforeRecent, mostRecentDate);
-      setCopiedWorkoutPlan(workoutPlanFromDb);
-    } else {
-      console.log("No dates found in the database.");
-    }
-  };
+  // get last two weeks workout plans
+const copyLastTwoWeeksWorkoutPlan = async () => {
+  const mostRecentDate = await getMostRecentDateFromDb();
+  if (mostRecentDate) {
+    const twoWeeksBeforeRecent = moment(mostRecentDate).subtract(2, 'weeks').format('YYYY-MM-DD');
+    const workoutPlanFromDb = await getWorkoutPlanFromDb(twoWeeksBeforeRecent, mostRecentDate);
+    return workoutPlanFromDb;
+  } else {
+    console.log("No dates found in the database.");
+    return null;
+  }
+};
 
   const handleWorkoutPlans = async (startIndex, endIndex, data, dates) => {
     // Extract workout plan
-    let workoutPlanStr = data.content.slice(startIndex + 7, endIndex);
+    let workoutPlanStr = data.content.slice(startIndex + 7, endIndex).trim();
   
     // Ensure that the extracted string is wrapped in curly braces
     if (!workoutPlanStr.startsWith('{')) {
@@ -204,11 +206,26 @@ export default function Workout() {
     });
   };
 
-  const fetchAndSaveWorkoutPlans = async () => {
+  const fetchAndSaveWorkoutPlans = async (copiedWorkoutPlan) => {
     // prepare the existing plan and the dates for the next two weeks
     const lastPlanDate = Object.keys(copiedWorkoutPlan).sort().slice(-1)[0];
     console.log('Last date of the plan:' + lastPlanDate)
-    const nextStartDate = moment(lastPlanDate).add(1, 'days').day(1).format('YYYY-MM-DD');
+    
+    
+    let nextStartDate = moment(lastPlanDate).add(1, 'days');
+
+// Check if nextStartDate is not a Monday
+if (nextStartDate.day() !== 1) {
+    // If not, set it to the next Monday
+    let daysUntilNextMonday = 1 - nextStartDate.day();
+    if (daysUntilNextMonday <= 0) { // This means it's currently after Monday (e.g. Tuesday, Wednesday, etc.) 
+        daysUntilNextMonday += 7; // This will add 7 days to negative values, effectively getting the number of days until the next Monday
+    }
+    nextStartDate.add(daysUntilNextMonday, 'days');
+}
+
+
+    nextStartDate = nextStartDate.format('YYYY-MM-DD');
     console.log('First date of the new plan:' + nextStartDate)
     const dates = [];
     for (let i = 0; i < 14; i++) {
@@ -221,14 +238,16 @@ export default function Workout() {
     // Message to be sent goes here
     const messages = [
       {
-        role: 'system',
-        content: `You are now BodyGenius, a personal fitness super assistant. Your objective is to help your client achieve their fitness goals by creating professional and scientific workouts plans. Your clients plan is expiring soon and you need to extend it. Here is the current plan for you client: ${existingPlanStr}
-  
-        You are a part of an app and it is essential you follow these instructions EXACTLY for the app to function properly:
-        1. When specifying workouts always begin with a token !wkst! and end with a token !wknd! , specify the plan in JSON format with stringified date as the key and an array containing objects with title and content properties as content. Here is an example: !wkst!{“YYYY-MM-DD”: [{“title": title for the section, "content": workout specifics}], … rest of the dates}!wknd!, for each of the following dates:${dates}.
-  
-        Provide plentiful detail in workout plans. Please create another two weeks of workouts for the specified dates while maintaining the format and style of the existing workouts.`
-      }
+        role: 'user',
+        content: `I am currently following a workout plan, but it expires next week. Can you create another two weeks of my program? 
+
+        Please only program the same days as the current program and maintain the spacing between them. Retain the structure of workout days and only change the non core exercises and rep ranges.
+          
+                You are a part of an app and it is essential you follow these instructions EXACTLY for the app to function properly:
+                1. When specifying workouts always begin with a token !wkst! and end with a token !wknd! , specify the plan in JSON format with stringified date as the key and an array containing objects with title and content properties as content. Here is an example: !wkst!{“YYYY-MM-DD”: [{“title": title for the section, "content": workout specifics}], … rest of the dates}!wknd!, for each of the following dates:${dates}.
+          
+                Here is my current workout plan that is to be extended: ${existingPlanStr} `
+              }
     ];
   
     try {
@@ -267,10 +286,16 @@ export default function Workout() {
     const lastDate = await getMostRecentDateFromDb();
     if (lastDate) {
       console.log('The last date now is: ' + lastDate)
-      let isGreaterThanSevenDays = moment(lastDate).isAfter(moment().add(7, 'days'));
+      let isGreaterThanSevenDays = moment(lastDate).isAfter(moment().add(14, 'days'));
       if (!isGreaterThanSevenDays) {
         // Fetch and save new workout plans
-        await fetchAndSaveWorkoutPlans();
+        console.log('Workout expiring in a week. Requesting a 2 week extension.')
+        const copiedWorkoutPlan = await copyLastTwoWeeksWorkoutPlan();
+        if(copiedWorkoutPlan && Object.keys(copiedWorkoutPlan).length > 0) {
+          await fetchAndSaveWorkoutPlans(copiedWorkoutPlan);
+        } else {
+          console.log("Could not copy last two week's workout plan. Cancelling API call.");
+        }
       }
     } else {
       console.log("No dates found in the database.");
