@@ -241,7 +241,7 @@ if (nextStartDate.day() !== 1) {
         role: 'user',
         content: `I am currently following a workout plan, but it expires next week. Can you create another two weeks of my program? 
 
-        Please only program the same days as the current program and maintain the spacing between them. Retain the structure of workout days and only change the non core exercises and rep ranges.
+        Please only program the same days as the current program and maintain the spacing between them to respect the rest days that are needed. Retain the structure of workout days and only change the non core exercises and rep ranges.
           
                 You are a part of an app and it is essential you follow these instructions EXACTLY for the app to function properly:
                 1. When specifying workouts always begin with a token !wkst! and end with a token !wknd! , specify the plan in JSON format with stringified date as the key and an array containing objects with title and content properties as content. Here is an example: !wkst!{“YYYY-MM-DD”: [{“title": title for the section, "content": workout specifics}], … rest of the dates}!wknd!, for each of the following dates:${dates}.
@@ -286,7 +286,7 @@ if (nextStartDate.day() !== 1) {
     const lastDate = await getMostRecentDateFromDb();
     if (lastDate) {
       console.log('The last date now is: ' + lastDate)
-      let isGreaterThanSevenDays = moment(lastDate).isAfter(moment().add(14, 'days'));
+      let isGreaterThanSevenDays = moment(lastDate).isAfter(moment().add(18, 'days'));
       if (!isGreaterThanSevenDays) {
         // Fetch and save new workout plans
         console.log('Workout expiring in a week. Requesting a 2 week extension.')

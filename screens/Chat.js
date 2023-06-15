@@ -241,33 +241,45 @@ export default function ChatScreen() {
   };
 
   const onSend = async (newMessages = []) => {
-  const newMessage = {
-    role: 'user',
-    content: newMessages[0].text,
-  };
-
-  setMessages(previousMessages => GiftedChat.append(previousMessages, newMessages));
-  setIsAssistantTyping(true);
-  const aiResponse = await getAIResponse(newMessage.content, messages);
-  setIsAssistantTyping(false);
-
-  if (aiResponse.content.trim().length > 0) {
-    const aiMessage = {
-      _id: `${aiResponse.role}-${messages.length + 1}`,
-      text: aiResponse.content, // Use the content property from the AI response
-      user: {
-        _id: aiResponse.role === 'user' ? 1 : 2, // Set the user._id based on the role property from the AI response
-        name: aiResponse.role, // Use the role property as the name
-      },
+    const newMessage = {
+      role: 'user',
+      content: newMessages[0].text,
     };
-
+  
+    // Save user message immediately.
     setMessages(previousMessages => {
-            const updatedMessages = GiftedChat.append(previousMessages, aiMessage);
+      const updatedMessages = GiftedChat.append(previousMessages, newMessages);
       AsyncStorage.setItem('chatHistory', JSON.stringify(convertFromGiftedChatFormat(updatedMessages)));
       return updatedMessages;
     });
-  }
-};
+  
+    setIsAssistantTyping(true);
+  
+    try {
+      const aiResponse = await getAIResponse(newMessage.content, messages);
+      setIsAssistantTyping(false);
+  
+      if (aiResponse.content.trim().length > 0) {
+        const aiMessage = {
+          _id: `${aiResponse.role}-${messages.length + 1}`,
+          text: aiResponse.content,
+          user: {
+            _id: aiResponse.role === 'user' ? 1 : 2,
+            name: aiResponse.role,
+          },
+        };
+  
+        // Save AI response.
+        setMessages(previousMessages => {
+          const updatedMessages = GiftedChat.append(previousMessages, aiMessage);
+          AsyncStorage.setItem('chatHistory', JSON.stringify(convertFromGiftedChatFormat(updatedMessages)));
+          return updatedMessages;
+        });
+      }
+    } catch (error) {
+      console.error("Error getting AI response: ", error);
+    }
+  };  
 
 
 const getAIResponse = async (userInput, currentMessages) => {

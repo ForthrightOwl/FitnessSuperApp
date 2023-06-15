@@ -11,6 +11,18 @@ import { WorkoutProvider } from './WorkoutContext';
 import { NutritionProvider } from './NutritionContext'; 
 import { ResetProvider } from './ResetChatContext';
 import Toast from 'react-native-toast-message';
+import { Dimensions } from 'react-native';
+
+// current device dimensions
+const { width: DEVICE_WIDTH, height: DEVICE_HEIGHT } = Dimensions.get('window');
+
+// iPhone 12 dimensions
+const REFERENCE_WIDTH = 390;
+const REFERENCE_HEIGHT = 844;
+
+export const getRelativeWidth = (size) => (DEVICE_WIDTH * size) / REFERENCE_WIDTH;
+export const getRelativeHeight = (size) => (DEVICE_HEIGHT * size) / REFERENCE_HEIGHT;
+
 
 const Tab = createBottomTabNavigator();
 
@@ -32,8 +44,7 @@ function MyTabs() {
                   {
                     display: 'flex',
                     backgroundColor:'#2f4f4f',
-                    paddingBottom:5
-
+                    paddingTop:3,
                   },
                   null,
                 ],
@@ -46,9 +57,9 @@ function MyTabs() {
                   headerTitle:"",
                   headerStatusBarHeight:0,
                   tabBarIcon: ({ color, size }) => (
-                    <Ionicons name="barbell-outline" size={30} color={color} />
+                    <Ionicons name="barbell-outline" size={getRelativeWidth(30)} color={color} />
                   ),
-                  tabBarLabel: "",
+                  tabBarShowLabel: false,
                 }}
               />
               <Tab.Screen
@@ -58,9 +69,9 @@ function MyTabs() {
                   headerTitle:"",
                   headerStatusBarHeight:0,
                   tabBarIcon: ({ color, size }) => (
-                    <Ionicons name="restaurant-outline" size={30} color={color} />
+                    <Ionicons name="restaurant-outline" size={getRelativeWidth(30)} color={color} />
                   ),
-                  tabBarLabel: "",
+                  tabBarShowLabel: false,
                 }}
               />
               <Tab.Screen
@@ -70,9 +81,9 @@ function MyTabs() {
                   headerTitle:"",
                   headerStatusBarHeight:0,
                   tabBarIcon: ({ color, size }) => (
-                    <Ionicons name="chatbox-ellipses-outline" size={30} color={color} />
+                    <Ionicons name="chatbox-ellipses-outline" size={getRelativeWidth(30)} color={color} />
                   ),
-                  tabBarLabel: "",
+                  tabBarShowLabel: false,
                 }}
               />
               <Tab.Screen
@@ -82,9 +93,9 @@ function MyTabs() {
                   headerTitle:"",
                   headerStatusBarHeight:0,
                   tabBarIcon: ({ color, size }) => (
-                    <Ionicons name="bar-chart-outline" size={30} color={color} />
+                    <Ionicons name="bar-chart-outline" size={getRelativeWidth(30)} color={color} />
                   ),
-                  tabBarLabel: "",
+                  tabBarShowLabel: false,
                 }}
               />
               <Tab.Screen
@@ -94,9 +105,9 @@ function MyTabs() {
                   headerTitle:"",
                   headerStatusBarHeight:0,
                   tabBarIcon: ({ color, size }) => (
-                    <Ionicons name="settings-outline" size={30} color={color} />
+                    <Ionicons name="settings-outline" size={getRelativeWidth(30)} color={color} />
                   ),
-                  tabBarLabel: "",
+                  tabBarShowLabel: false,
                 }}
               />
             </Tab.Navigator>
