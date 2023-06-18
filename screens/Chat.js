@@ -282,261 +282,286 @@ export default function ChatScreen() {
   };  
 
 
-const getAIResponse = async (userInput, currentMessages) => {
-  const messages = convertFromGiftedChatFormat(currentMessages).reverse();
-  messages.push({ role: 'user', content: userInput });
-  messages.push({ role: 'system', content: mainMessage }); 
-
-  console.log('Sending messages:', JSON.stringify({ messages }));
-
-  try {
-    const response = await fetch('https://us-central1-centered-carver-385915.cloudfunctions.net/fitnessChatbot', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ messages }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      if (errorText === "upstream request timeout") {
-        return 'Oops! We apologize for the inconvenience. Our servers are currently experiencing high traffic, making it difficult to process your request. Please reset your chat history in the settings and try again later. We appreciate your patience and look forward to assisting you soon. Keep up the great work on your fitness journey!';
-      } else {
-        throw new Error(`API responded with an error: ${errorText}`);
-      }
-    }
-
-    let data = await response.json();
-    let workoutStartIndex = data.content.indexOf('!wkst!');
-    let workoutEndIndex = data.content.indexOf('!wknd!');
-    let nutritionStartIndex = data.content.indexOf('!ntst!');
-    let nutritionEndIndex = data.content.indexOf('!ntnd!');
-
+ const getAIResponse = async (userInput, currentMessages) => {
+    const messages = convertFromGiftedChatFormat(currentMessages).reverse();
+    messages.push({ role: 'user', content: userInput });
+    messages.push({ role: 'system', content: mainMessage }); 
+  
+    console.log('Sending messages:', JSON.stringify({ messages }));
+  
     try {
-      // Deep copy the data object
-      let workoutData = JSON.parse(JSON.stringify(data));
-      let nutritionData = JSON.parse(JSON.stringify(data));
+      const response = await fetch('https://us-central1-centered-carver-385915.cloudfunctions.net/fitnessChatbot', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ messages }),
+      });
   
-      let workoutResult, nutritionResult;
-  
-      if (workoutStartIndex !== -1 && workoutEndIndex !== -1) {
-        workoutResult = await handleWorkoutPlans(workoutStartIndex, workoutEndIndex, workoutData);
-      } else if (workoutStartIndex !== -1) {
-        data.content = data.content.slice(0, workoutStartIndex);
-      }
-  
-      if (nutritionStartIndex !== -1 && nutritionEndIndex !== -1) {
-        nutritionResult = await handleNutritionPlans(nutritionStartIndex, nutritionEndIndex, nutritionData);
-      } else if (nutritionStartIndex !== -1) {
-        if (workoutResult) {
-          nutritionStartIndex -= (workoutEndIndex - workoutStartIndex + 7);
+      if (!response.ok) {
+        const errorText = await response.text();
+        if (errorText === "upstream request timeout") {
+          return 'Oops! We apologize for the inconvenience. Our servers are currently experiencing high traffic, making it difficult to process your request. Please reset your chat history in the settings and try again later. We appreciate your patience and look forward to assisting you soon. Keep up the great work on your fitness journey!';
+        } else {
+          throw new Error(`API responded with an error: ${errorText}`);
         }
-        data.content = data.content.slice(0, nutritionStartIndex);
       }
-
-        // If workout data was processed, remove the relevant part from the content.
-        if (workoutResult) {
-          data.content = data.content.slice(0, workoutStartIndex) + data.content.slice(workoutEndIndex + 7);
-          if (nutritionResult) {
-            nutritionStartIndex -= (workoutEndIndex - workoutStartIndex + 7);
-            nutritionEndIndex -= (workoutEndIndex - workoutStartIndex + 7);
+      
+      function getAllTokens(content, startTag, endTag) {
+        let tokens = [];
+        let start = content.indexOf(startTag);
+        while (start !== -1) {
+          let end = content.indexOf(endTag, start);
+          if (end === -1) {
+            break;
           }
+          tokens.push({start, end});
+          start = content.indexOf(startTag, end);
         }
+        return tokens;
+      }
+      
+      async function deleteAllWorkoutPlans() {
+        return new Promise((resolve, reject) => {
+          workoutDb.transaction(tx => {
+            tx.executeSql(
+              `DELETE FROM workout_plans;`,
+              [],
+              (_, resultSet) => {
+                console.log('All existing workout plans deleted successfully.');
+                resolve();
+              },
+              (_, error) => {
+                console.log(`Error deleting existing workout plans:`, error);
+                reject();
+              }
+            );
+          });
+        });
+      }
+      
+      async function deleteAllNutritionPlans() {
+        return new Promise((resolve, reject) => {
+          nutritionDb.transaction(tx => {
+            tx.executeSql(
+              `DELETE FROM nutrition_plans;`,
+              [],
+              (_, resultSet) => {
+                console.log('All existing nutrition plans deleted successfully.');
+                resolve();
+              },
+              (_, error) => {
+                console.log(`Error deleting existing nutrition plans:`, error);
+                reject();
+              }
+            );
+          });
+        });
+      }
 
-        // If nutrition data was processed, remove the relevant part from the content.
-        if (nutritionResult) {
-          data.content = data.content.slice(0, nutritionStartIndex) + data.content.slice(nutritionEndIndex + 7);
-        }
+      let data = await response.json();
 
-        return data;
+      let workoutTokens = getAllTokens(data.content, '!wkst!', '!wknd!');
+      let nutritionTokens = getAllTokens(data.content, '!ntst!', '!ntnd!');
 
+      if (workoutTokens.length > 0) {
+        // Delete all workout plans before handling new ones
+        await deleteAllWorkoutPlans();
+      }
+
+      if (nutritionTokens.length > 0) {
+        // Delete all nutrition plans before handling new ones
+        await deleteAllNutritionPlans();
+      }
+  
+      try {
+        let workoutResults = [];
+  for (let {start, end} of workoutTokens) {
+    workoutResults.push(await handleWorkoutPlans(start, end, JSON.parse(JSON.stringify(data))));
+  }
+
+  let nutritionResults = [];
+  for (let {start, end} of nutritionTokens) {
+    nutritionResults.push(await handleNutritionPlans(start, end, JSON.parse(JSON.stringify(data))));
+  }
+
+  // Remove processed plans from the content
+  let indicesToRemove = workoutTokens.concat(nutritionTokens);
+  indicesToRemove.sort((a, b) => b.start - a.start);  // Reverse sort to prevent index shifting
+
+  for (let {start, end} of indicesToRemove) {
+    data.content = data.content.slice(0, start) + data.content.slice(end + 7);
+  }
+
+  // Reduce newlines to at most two in a row
+  data.content = data.content.replace(/\n{3,}/g, '\n\n');
+  data.content = data.content.replace(":", ".");
+  return data;
+  
+      } catch (error) {
+        console.log('Error processing incomplete message:', error);
+        return {
+          content: 'Unfortunately, we are not able to process your request right now. Please reset the chat in settings and try again. We apologize for the inconvenience.',
+        };
+      }
     } catch (error) {
-      console.log('Error processing incomplete message:', error);
+      console.log('Error fetching AI response:', error);
       return {
-        content: 'Unfortunately, we are not able to process your request right now. Please reset the chat in settings and try again. We apologize for the inconvenience.',
+        content: 'Oops! We encountered an issue while contacting our servers. Please check your network connection and try again. We apologize for any inconvenience caused and appreciate your understanding.',
       };
     }
-  } catch (error) {
-    console.log('Error fetching AI response:', error);
-    return {
-      content: 'Oops! We encountered an issue while contacting our servers. Please check your network connection and try again. We apologize for any inconvenience caused and appreciate your understanding.',
-    };
-  }
-};
-
-
-
-const handleWorkoutPlans = async (startIndex, endIndex, data) => {
-  // Extract workout plan
-  let workoutPlanStr = data.content.slice(startIndex + 7, endIndex).trim();
-
-  // Ensure that the extracted string is wrapped in curly braces
-  if (!workoutPlanStr.startsWith('{')) {
-    workoutPlanStr = '{' + workoutPlanStr;
-  }
-  if (!workoutPlanStr.endsWith('}')) {
-    workoutPlanStr = workoutPlanStr + '}';
-  }
-
-  let workoutPlanObj;
-  try {   
-    workoutPlanObj = JSON.parse(workoutPlanStr);
-  } catch (error) {
-    console.log('Error parsing workout plan:', error);
-    return;
-  }
-
-  // Get the first date from the workout plan
-  const firstDateFromPlan = Object.keys(workoutPlanObj)[0];
-
-  // Check if the first date is in the dateList
-  if (!dateList.slice(0, 5).includes(firstDateFromPlan)) {
-    // Get the first date from the dateList
-    const firstDateFromList = dateList[0];
-    // Create a new workout plan object with updated dates
-    const updatedWorkoutPlanObj = {};
-    const originalDates = [];
-    const newDates = [];
-    for (const date in workoutPlanObj) {
-      const dateObj = new Date(date);
-      const daysDiff = Math.floor((dateObj - new Date(firstDateFromPlan)) / (1000 * 60 * 60 * 24));
-      const newDateObj = new Date(firstDateFromList);
-      newDateObj.setDate(newDateObj.getDate() + daysDiff);
-      const newDate = newDateObj.toISOString().split('T')[0];
-      updatedWorkoutPlanObj[newDate] = workoutPlanObj[date];
-      // Store original and new dates for logging
-      originalDates.push(date);
-      newDates.push(newDate);
+  };
+  
+  
+  
+  const handleWorkoutPlans = async (startIndex, endIndex, data) => {
+    // Extract workout plan
+    let workoutPlanStr = data.content.slice(startIndex + 7, endIndex).trim();
+  
+    // Ensure that the extracted string is wrapped in curly braces
+    if (!workoutPlanStr.startsWith('{')) {
+      workoutPlanStr = '{' + workoutPlanStr;
     }
-    // Update the workoutPlanObj to be the updatedWorkoutPlanObj
-    workoutPlanObj = updatedWorkoutPlanObj;
-
-    console.log(`Dates needed to be changed. Changed: ${originalDates} to ${newDates}`);
-  }
-
-  // Clear the workout table first
-  workoutDb.transaction(tx => {
-    tx.executeSql(
-      `DELETE FROM workout_plans;`,
-      [],
-      (_, resultSet) => {
-        console.log('All existing workout plans deleted successfully.');
-
-        // Then, insert the new plans
-        Object.keys(workoutPlanObj).forEach(date => {
-          let plan = JSON.stringify(workoutPlanObj[date]);
-
-          tx.executeSql(
-            `INSERT INTO workout_plans (date, plan) VALUES (?, ?);`,
-            [date, plan],
-            (_, resultSet) => {
-              updateWorkoutData(true),
-              console.log('New workout plan saved successfully.');
-            },
-            (_, error) => {
-              console.log(`Error saving workout plan to database:`, error);
-            }
-          );
-        });
-      },
-      (_, error) => {
-        console.log(`Error deleting existing workout plans:`, error);
-      }
-    );
-  });
-
-  return data;
-};
-
-
-const handleNutritionPlans = async (startIndex, endIndex, data) => {
-  // Extract nutrition plan
-  let nutritionPlanStr = data.content.slice(startIndex + 7, endIndex).trim();
-  // Ensure that the extracted string is wrapped in curly braces
-  if (!nutritionPlanStr.startsWith('{')) {
-    nutritionPlanStr = '{' + nutritionPlanStr;
-  }
-  if (!nutritionPlanStr.endsWith('}')) {
-    nutritionPlanStr = nutritionPlanStr + '}';
-  }
-
-  // Remove trailing commas and comments
-  nutritionPlanStr = nutritionPlanStr.replace(/,\s*([}\]])/g, "$1");
-  nutritionPlanStr = nutritionPlanStr.replace(/\/\/.*|\/\*[^]*?\*\//g, "");
-
-  let nutritionPlanObj;
-  try {
-    nutritionPlanObj = JSON.parse(nutritionPlanStr);
-  } catch (error) {
-    console.log('Error parsing nutrition plan:', error);
-    console.log('Here is the string that caused the error:' + nutritionPlanStr)
-    return {
-      content: "I'm sorry, but we are unable to process your request at this time. Please reset the chat in settings and try again later."
-    };
-  }
-
-  // Get the first date from the nutrition plan
-  const firstDateFromPlan = Object.keys(nutritionPlanObj)[0];
-
-  // Check if the first date is in the dateList
-  if (!dateList.slice(0, 5).includes(firstDateFromPlan)) {
-    // Get the first date from the dateList
-    const firstDateFromList = dateList[0];
-    // Create a new nutrition plan object with updated dates
-    const updatedNutritionPlanObj = {};
-    const originalDates = [];
-    const newDates = [];
-    for (const date in nutritionPlanObj) {
-      const dateObj = new Date(date);
-      const daysDiff = Math.floor((dateObj - new Date(firstDateFromPlan)) / (1000 * 60 * 60 * 24));
-      const newDateObj = new Date(firstDateFromList);
-      newDateObj.setDate(newDateObj.getDate() + daysDiff);
-      const newDate = newDateObj.toISOString().split('T')[0];
-      updatedNutritionPlanObj[newDate] = nutritionPlanObj[date];
-      // Store original and new dates for logging
-      originalDates.push(date);
-      newDates.push(newDate);
+    if (!workoutPlanStr.endsWith('}')) {
+      workoutPlanStr = workoutPlanStr + '}';
     }
-    // Update the nutritionPlanObj to be the updatedNutritionPlanObj
-    nutritionPlanObj = updatedNutritionPlanObj;
-
-    console.log(`Dates needed to be changed. Changed: ${originalDates} to ${newDates}`);
-  }
-
-  // Clear the nutrition table first
-  nutritionDb.transaction(tx => {
-    tx.executeSql(
-      `DELETE FROM nutrition_plans;`,
-      [],
-      (_, resultSet) => {
-        console.log('All existing nutrition plans deleted successfully.');
-
-        // Then, insert the new plans
-        Object.keys(nutritionPlanObj).forEach(date => {
-          let plan = JSON.stringify(nutritionPlanObj[date]);
-
-          tx.executeSql(
-            `INSERT INTO nutrition_plans (date, plan) VALUES (?, ?);`,
-            [date, plan],
-            (_, resultSet) => {
-              updateNutritionData(true),
-              console.log('New nutrition plan saved successfully.');
-            },
-            (_, error) => {
-              console.log(`Error saving nutrition plan to database:`, error);
-            }
-          );
-        });
-      },
-      (_, error) => {
-        console.log(`Error deleting existing nutrition plans:`, error);
+  
+    let workoutPlanObj;
+    try {   
+      workoutPlanObj = JSON.parse(workoutPlanStr);
+    } catch (error) {
+      console.log('Error parsing workout plan:', error);
+      return;
+    }
+  
+    // Get the first date from the workout plan
+    const firstDateFromPlan = Object.keys(workoutPlanObj)[0];
+  
+    // Check if the first date is in the dateList
+    if (!dateList.slice(0, 5).includes(firstDateFromPlan)) {
+      // Get the first date from the dateList
+      const firstDateFromList = dateList[0];
+      // Create a new workout plan object with updated dates
+      const updatedWorkoutPlanObj = {};
+      const originalDates = [];
+      const newDates = [];
+      for (const date in workoutPlanObj) {
+        const dateObj = new Date(date);
+        const daysDiff = Math.floor((dateObj - new Date(firstDateFromPlan)) / (1000 * 60 * 60 * 24));
+        const newDateObj = new Date(firstDateFromList);
+        newDateObj.setDate(newDateObj.getDate() + daysDiff);
+        const newDate = newDateObj.toISOString().split('T')[0];
+        updatedWorkoutPlanObj[newDate] = workoutPlanObj[date];
+        // Store original and new dates for logging
+        originalDates.push(date);
+        newDates.push(newDate);
       }
-    );
-  });
-
-  return data;
-};
+      // Update the workoutPlanObj to be the updatedWorkoutPlanObj
+      workoutPlanObj = updatedWorkoutPlanObj;
+  
+      console.log(`Dates needed to be changed. Changed: ${originalDates} to ${newDates}`);
+    }
+  
+    workoutDb.transaction(tx => {
+      // Insert the new plans
+      Object.keys(workoutPlanObj).forEach(date => {
+        let plan = JSON.stringify(workoutPlanObj[date]);
+    
+        tx.executeSql(
+          `INSERT INTO workout_plans (date, plan) VALUES (?, ?);`,
+          [date, plan],
+          (_, resultSet) => {
+            updateWorkoutData(true);
+            console.log('New workout plan saved successfully.');
+          },
+          (_, error) => {
+            console.log(`Error saving workout plan to database:`, error);
+          }
+        );
+      });
+    });
+    
+  
+    return data;
+  };
+  
+  
+  const handleNutritionPlans = async (startIndex, endIndex, data) => {
+    // Extract nutrition plan
+    let nutritionPlanStr = data.content.slice(startIndex + 7, endIndex).trim();
+    // Ensure that the extracted string is wrapped in curly braces
+    if (!nutritionPlanStr.startsWith('{')) {
+      nutritionPlanStr = '{' + nutritionPlanStr;
+    }
+    if (!nutritionPlanStr.endsWith('}')) {
+      nutritionPlanStr = nutritionPlanStr + '}';
+    }
+  
+    // Remove trailing commas and comments
+    nutritionPlanStr = nutritionPlanStr.replace(/,\s*([}\]])/g, "$1");
+    nutritionPlanStr = nutritionPlanStr.replace(/\/\/.*|\/\*[^]*?\*\//g, "");
+  
+    let nutritionPlanObj;
+    try {
+      nutritionPlanObj = JSON.parse(nutritionPlanStr);
+    } catch (error) {
+      console.log('Error parsing nutrition plan:', error);
+      console.log('Here is the string that caused the error:' + nutritionPlanStr)
+      return {
+        content: "I'm sorry, but we are unable to process your request at this time. Please reset the chat in settings and try again later."
+      };
+    }
+  
+    // Get the first date from the nutrition plan
+    const firstDateFromPlan = Object.keys(nutritionPlanObj)[0];
+  
+    // Check if the first date is in the dateList
+    if (!dateList.slice(0, 5).includes(firstDateFromPlan)) {
+      // Get the first date from the dateList
+      const firstDateFromList = dateList[0];
+      // Create a new nutrition plan object with updated dates
+      const updatedNutritionPlanObj = {};
+      const originalDates = [];
+      const newDates = [];
+      for (const date in nutritionPlanObj) {
+        const dateObj = new Date(date);
+        const daysDiff = Math.floor((dateObj - new Date(firstDateFromPlan)) / (1000 * 60 * 60 * 24));
+        const newDateObj = new Date(firstDateFromList);
+        newDateObj.setDate(newDateObj.getDate() + daysDiff);
+        const newDate = newDateObj.toISOString().split('T')[0];
+        updatedNutritionPlanObj[newDate] = nutritionPlanObj[date];
+        // Store original and new dates for logging
+        originalDates.push(date);
+        newDates.push(newDate);
+      }
+      // Update the nutritionPlanObj to be the updatedNutritionPlanObj
+      nutritionPlanObj = updatedNutritionPlanObj;
+  
+      console.log(`Dates needed to be changed. Changed: ${originalDates} to ${newDates}`);
+    }
+  
+    nutritionDb.transaction(tx => {
+      // Insert the new plans
+      Object.keys(nutritionPlanObj).forEach(date => {
+        let plan = JSON.stringify(nutritionPlanObj[date]);
+    
+        tx.executeSql(
+          `INSERT INTO nutrition_plans (date, plan) VALUES (?, ?);`,
+          [date, plan],
+          (_, resultSet) => {
+            updateNutritionData(true);
+            console.log('New nutrition plan saved successfully.');
+          },
+          (_, error) => {
+            console.log(`Error saving nutrition plan to database:`, error);
+          }
+        );
+      });
+    });
+    
+  
+    return data;
+  };
 
 
   const convertToGiftedChatFormat = (messages) => {
