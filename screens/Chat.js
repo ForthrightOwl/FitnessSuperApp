@@ -63,12 +63,12 @@ const dateList = generateDateList();
 
 let initialMessage = `You are BodyGenius, a friendly and supportive personal fitness trainer.
 
-You are a part of an app and it is essential you follow these instructions EXACTLY for the app to function properly:
-When specifying workouts always begin with a token !wkst! and end with a token !wknd! , specify the plan in JSON format with stringified date as the key and an array containing objects with title and content properties as content. Here is an example: !wkst!{“YYYY-MM-DD”: [{“title": title for the section, "content": workout specifics}], … rest of the dates}!wknd!, for each of the following dates:${dateList}. Tell the user to see the workout plan in the workouts tab. Never provide plans longer than two weeks!
-When specifying nutrition plans always begin with a token !ntst! and end with a token !ntnd! , specify the plan in JSON format with stringified date as the key and an array containing objects with title and content properties as content. Here is an example: !wkst!{“YYYY-MM-DD”: [{“title": title for the section, "content": workout specifics}], … rest of the dates}!wknd!, for each of the following dates:${dateList}. Tell the user to see the nutrition plan in the nutrition tab. Never provide plans longer than two weeks!
-There is a progress tracking screen, so if the client asks about tracking their progress redirect them there.
+Your objective is to help your client achieve their fitness goals by creating professional and diverse non repetitive workouts or meal plans, and by being a useful resource to answer any fitness related questions. Ask a lot of questions to understand your client and personalize your advice to them. Always ensure you have information regarding your client’s gender, age, experience, goals, schedule preferences and other similar important factors before giving advice. Listen to your clients and tailor your responses to their wishes.
 
-Your objective is to help your client achieve their fitness goals by creating professional and diverse non repetitive workouts or meal plans, and by being a useful resource to answer any fitness related questions. Ask a lot of questions to understand your client and personalize your advice to them. Always ensure you have information regarding your client’s gender, age, experience, goals, schedule preferences and other similar important factors before writing their plans. Listen to your clients and tailor your responses to their wishes.
+When asked to, write workout plans in the following format: always begin with a token !wkst! and end with a token !wknd! , specify the plan in JSON format with stringified date as the key and an array containing objects with title and content properties as content. Here is an example: !wkst!{“YYYY-MM-DD”: [{“title": title for the section, "content": workout specifics}], … rest of the dates}!wknd!, for each of the following dates:${dateList}. Tell the user to see the workout plan in the workouts tab. Never provide plans longer than two weeks!
+When specifying nutrition plans always begin with a token !ntst! and end with a token !ntnd! , specify the plan in JSON format with stringified date as the key and an array containing objects with title and content properties as content. Here is an example: !wkst!{“YYYY-MM-DD”: [{“title": title for the section, "content": workout specifics}], … rest of the dates}!wknd!, for each of the following dates:${dateList}. Tell the user to see the nutrition plan in the nutrition tab. Never provide plans longer than two weeks!
+This format is necessary for the user to save it into an agenda so make sure you follow it exactly ALWAYS! Wrap the whole plan in the designated start and end token, not individual parts.
+There is a progress tracking screen, so if the client asks about tracking their progress redirect them there.
 
 Provide plentiful detail in workout and nutrition plans. Always encourage your client to exercise their own judgement in regards to their health. When giving exercise form advice, always provide a link to an instructional video. Never give them both plans at once.`
 const initialBGMessage = `Hey there! I'm BodyGenius, your personal fitness super assistant. How can I help you achieve your fitness goals today?`
@@ -189,17 +189,17 @@ export default function ChatScreen() {
           let dataMessage = '';
 
           if (workoutPlan && nutritionPlan) {
-            dataMessage = "Here is your current workout and nutrition plans: \n\n" 
+            dataMessage = "Here is the client's current workout and nutrition plans: \n\n" 
                         + "Workout Plan: " + JSON.stringify(workoutPlan) + "\n\n"
                         + "Nutrition Plan: " + JSON.stringify(nutritionPlan);
           } else if (workoutPlan) {
-            dataMessage = "Here is your current workout plan: \n\n" 
+            dataMessage = "Here is the client's current workout plan: \n\n" 
                         + "Workout Plan: " + JSON.stringify(workoutPlan);
           } else if (nutritionPlan) {
-            dataMessage = "Here is your current nutrition plan: \n\n"
+            dataMessage = "Here is the client's current nutrition plan: \n\n"
                         + "Nutrition Plan: " + JSON.stringify(nutritionPlan);
           } else {
-            dataMessage = "You don't have any workout or nutrition plans stored for the last two weeks.";
+            dataMessage = "";
           }
 
           mainMessage = `${dataMessage}\n\n${initialMessage}`;
@@ -227,7 +227,7 @@ export default function ChatScreen() {
         { role: 'assistant', content: initialBGMessage },
       ];
       setMessages(convertToGiftedChatFormat(initialMessages)); 
-      AsyncStorage.setItem('chatHistory', JSON.stringify([ { role: 'user', content: mainMessage }, ...initialMessages]));
+      AsyncStorage.setItem('chatHistory', JSON.stringify([ { role: 'system', content: mainMessage }, ...initialMessages]));
     }
   };
   
@@ -285,7 +285,7 @@ export default function ChatScreen() {
 const getAIResponse = async (userInput, currentMessages) => {
   const messages = convertFromGiftedChatFormat(currentMessages).reverse();
   messages.push({ role: 'user', content: userInput });
-  messages.push({ role: 'user', content: mainMessage }); 
+  messages.push({ role: 'system', content: mainMessage }); 
 
   console.log('Sending messages:', JSON.stringify({ messages }));
 
