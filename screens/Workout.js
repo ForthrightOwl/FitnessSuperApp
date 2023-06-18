@@ -286,7 +286,7 @@ if (nextStartDate.day() !== 1) {
     const lastDate = await getMostRecentDateFromDb();
     if (lastDate) {
       console.log('The last date now is: ' + lastDate)
-      let isGreaterThanSevenDays = moment(lastDate).isAfter(moment().add(18, 'days'));
+      let isGreaterThanSevenDays = moment(lastDate).isAfter(moment().add(7, 'days'));
       if (!isGreaterThanSevenDays) {
         // Fetch and save new workout plans
         console.log('Workout expiring in a week. Requesting a 2 week extension.')

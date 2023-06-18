@@ -63,10 +63,10 @@ const dateList = generateDateList();
 
 let initialMessage = `You are BodyGenius, a friendly and supportive personal fitness trainer.
 
-Your objective is to help your client achieve their fitness goals by creating professional and diverse non repetitive workouts or meal plans, and by being a useful resource to answer any fitness related questions. Ask a lot of questions to understand your client and personalize your advice to them. Always ensure you have information regarding your client’s gender, age, experience, goals, schedule preferences and other similar important factors before giving advice. Listen to your clients and tailor your responses to their wishes.
+Your objective is to help your client achieve their fitness goals by creating professional and diverse non repetitive workouts or nutritional meal plans, and by being a useful resource to answer any fitness related questions. Ask a lot of questions to understand your client and personalize your advice to them. Always ensure you have information regarding your client’s gender, age, experience, goals, schedule preferences and other similar important factors before giving advice. Listen to your clients and tailor your responses to their wishes.
 
 When asked to, write workout plans in the following format: always begin with a token !wkst! and end with a token !wknd! , specify the plan in JSON format with stringified date as the key and an array containing objects with title and content properties as content. Here is an example: !wkst!{“YYYY-MM-DD”: [{“title": title for the section, "content": workout specifics}], … rest of the dates}!wknd!, for each of the following dates:${dateList}. Tell the user to see the workout plan in the workouts tab. Never provide plans longer than two weeks!
-When specifying nutrition plans always begin with a token !ntst! and end with a token !ntnd! , specify the plan in JSON format with stringified date as the key and an array containing objects with title and content properties as content. Here is an example: !wkst!{“YYYY-MM-DD”: [{“title": title for the section, "content": workout specifics}], … rest of the dates}!wknd!, for each of the following dates:${dateList}. Tell the user to see the nutrition plan in the nutrition tab. Never provide plans longer than two weeks!
+When specifying nutrition or meal plans always begin with a token !ntst! and end with a token !ntnd! , specify the plan in JSON format with stringified date as the key and an array containing objects with title and content properties as content. Here is an example: !ntst!{“YYYY-MM-DD”: [{“title": meal name, "content": meal specifics}], … rest of the dates}!ntnd!, for each of the following dates:${dateList}. Tell the user to see the nutrition plan in the nutrition tab. Never provide plans longer than two weeks!
 This format is necessary for the user to save it into an agenda so make sure you follow it exactly ALWAYS! Wrap the whole plan in the designated start and end token, not individual parts.
 There is a progress tracking screen, so if the client asks about tracking their progress redirect them there.
 
@@ -183,21 +183,21 @@ export default function ChatScreen() {
           createWorkoutTable();
           createNutritionTable();
 
-          const workoutPlan = await getLastPlan(workoutDb, 'workout_plans');
-          const nutritionPlan = await getLastPlan(nutritionDb, 'nutrition_plans');
-
+          let workoutPlan = await getLastPlan(workoutDb, 'workout_plans');
+          let nutritionPlan = await getLastPlan(nutritionDb, 'nutrition_plans');
+          
+          // Treat empty strings as false
+          workoutPlan = workoutPlan && workoutPlan.trim() !== "" ? workoutPlan : null;
+          nutritionPlan = nutritionPlan && nutritionPlan.trim() !== "" ? nutritionPlan : null;
           let dataMessage = '';
 
           if (workoutPlan && nutritionPlan) {
-            dataMessage = "Here is the client's current workout and nutrition plans: \n\n" 
-                        + "Workout Plan: " + JSON.stringify(workoutPlan) + "\n\n"
-                        + "Nutrition Plan: " + JSON.stringify(nutritionPlan);
+            dataMessage = "Client's current workout plan: " + JSON.stringify(workoutPlan) + "\n"
+                        + "Client's current nutrition plan: " + JSON.stringify(nutritionPlan);
           } else if (workoutPlan) {
-            dataMessage = "Here is the client's current workout plan: \n\n" 
-                        + "Workout Plan: " + JSON.stringify(workoutPlan);
+            dataMessage = "Client's current workout plan: " + JSON.stringify(workoutPlan);
           } else if (nutritionPlan) {
-            dataMessage = "Here is the client's current nutrition plan: \n\n"
-                        + "Nutrition Plan: " + JSON.stringify(nutritionPlan);
+            dataMessage = "Client's current nutrition plan: " + JSON.stringify(nutritionPlan);
           } else {
             dataMessage = "";
           }
@@ -380,7 +380,7 @@ const handleWorkoutPlans = async (startIndex, endIndex, data) => {
   }
 
   let workoutPlanObj;
-  try {
+  try {   
     workoutPlanObj = JSON.parse(workoutPlanStr);
   } catch (error) {
     console.log('Error parsing workout plan:', error);
@@ -435,13 +435,13 @@ const handleWorkoutPlans = async (startIndex, endIndex, data) => {
               console.log('New workout plan saved successfully.');
             },
             (_, error) => {
-              conosle.log.log(`Error saving workout plan to database:`, error);
+              console.log(`Error saving workout plan to database:`, error);
             }
           );
         });
       },
       (_, error) => {
-        conosle.log.log(`Error deleting existing workout plans:`, error);
+        console.log(`Error deleting existing workout plans:`, error);
       }
     );
   });
@@ -452,8 +452,7 @@ const handleWorkoutPlans = async (startIndex, endIndex, data) => {
 
 const handleNutritionPlans = async (startIndex, endIndex, data) => {
   // Extract nutrition plan
-  let nutritionPlanStr = data.content.slice(startIndex + 7, endIndex);
-
+  let nutritionPlanStr = data.content.slice(startIndex + 7, endIndex).trim();
   // Ensure that the extracted string is wrapped in curly braces
   if (!nutritionPlanStr.startsWith('{')) {
     nutritionPlanStr = '{' + nutritionPlanStr;
@@ -462,13 +461,19 @@ const handleNutritionPlans = async (startIndex, endIndex, data) => {
     nutritionPlanStr = nutritionPlanStr + '}';
   }
 
+  // Remove trailing commas and comments
+  nutritionPlanStr = nutritionPlanStr.replace(/,\s*([}\]])/g, "$1");
+  nutritionPlanStr = nutritionPlanStr.replace(/\/\/.*|\/\*[^]*?\*\//g, "");
+
   let nutritionPlanObj;
   try {
     nutritionPlanObj = JSON.parse(nutritionPlanStr);
   } catch (error) {
-    conosle.log.log('Error parsing nutrition plan:', error);
-    console.log('Here is the sstring that caused the error:' + nutritionPlanStr)
-    return;
+    console.log('Error parsing nutrition plan:', error);
+    console.log('Here is the string that caused the error:' + nutritionPlanStr)
+    return {
+      content: "I'm sorry, but we are unable to process your request at this time. Please reset the chat in settings and try again later."
+    };
   }
 
   // Get the first date from the nutrition plan
@@ -519,13 +524,13 @@ const handleNutritionPlans = async (startIndex, endIndex, data) => {
               console.log('New nutrition plan saved successfully.');
             },
             (_, error) => {
-              conosle.log.log(`Error saving nutrition plan to database:`, error);
+              console.log(`Error saving nutrition plan to database:`, error);
             }
           );
         });
       },
       (_, error) => {
-        conosle.log.log(`Error deleting existing nutrition plans:`, error);
+        console.log(`Error deleting existing nutrition plans:`, error);
       }
     );
   });

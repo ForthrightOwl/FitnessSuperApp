@@ -24,7 +24,7 @@ const getMostRecentDateFromDb = () => {
         (_, error) => {
           console.log("Error fetching the most recent date from database:", error);
           if (error.message.includes("no such table")) {
-            resolve(null); // return null if there's no workout_plans table
+            resolve(null); // return null if there's no nutrition_plans table
           } else {
             reject(error);
           }
@@ -71,7 +71,7 @@ const getNutritionPlanFromDb = async (startOfWeek, endOfWeek) => {
           }
         },
         (_, error) => {
-          console.log("Error fetching nutrition plans from database:", error);
+          console.log("Error fetching nutritions from database:", error);
           // if error occurs, resolve with empty object
           if (error.message.includes("no such table")) {
             resolve({}); // return {} if there's no nutrition_plans table
@@ -83,6 +83,7 @@ const getNutritionPlanFromDb = async (startOfWeek, endOfWeek) => {
     });
   });
 };
+
 
 const NutritionItem = React.memo(({ title, content }) => {
   return (
@@ -96,7 +97,7 @@ const NutritionItem = React.memo(({ title, content }) => {
 const EmptyNutrition = () => {
   return (
     <View style={styles.emptyDate}>
-      <Text style={styles.emptyDateText}>No meals scheduled for today</Text>
+      <Text style={styles.emptyDateText}>No meals scheduled</Text>
     </View>
   );
 };
@@ -124,20 +125,22 @@ export default function Nutrition() {
   const [copiedNutritionPlan, setCopiedNutritionPlan] = React.useState({});
 
   // get last two weeks nutrition plans
-  const copyLastTwoWeeksNutritionPlan = async () => {
-    const mostRecentDate = await getMostRecentDateFromDb();
-    if (mostRecentDate) {
-      const twoWeeksBeforeRecent = moment(mostRecentDate).subtract(2, 'weeks').format('YYYY-MM-DD');
-      const nutritionPlanFromDb = await getNutritionPlanFromDb(twoWeeksBeforeRecent, mostRecentDate);
-      setCopiedNutritionPlan(nutritionPlanFromDb);
-    } else {
-      console.log("No dates found in the database.");
-    }
-  };
+  // get last two weeks nutrition plans
+const copyLastTwoWeeksNutritionPlan = async () => {
+  const mostRecentDate = await getMostRecentDateFromDb();
+  if (mostRecentDate) {
+    const twoWeeksBeforeRecent = moment(mostRecentDate).subtract(2, 'weeks').format('YYYY-MM-DD');
+    const nutritionPlanFromDb = await getNutritionPlanFromDb(twoWeeksBeforeRecent, mostRecentDate);
+    return nutritionPlanFromDb;
+  } else {
+    console.log("No dates found in the database.");
+    return null;
+  }
+};
 
   const handleNutritionPlans = async (startIndex, endIndex, data, dates) => {
     // Extract nutrition plan
-    let nutritionPlanStr = data.content.slice(startIndex + 7, endIndex);
+    let nutritionPlanStr = data.content.slice(startIndex + 7, endIndex).trim();
   
     // Ensure that the extracted string is wrapped in curly braces
     if (!nutritionPlanStr.startsWith('{')) {
@@ -203,11 +206,26 @@ export default function Nutrition() {
     });
   };
 
-  const fetchAndSaveNutritionPlans = async () => {
+  const fetchAndSaveNutritionPlans = async (copiedNutritionPlan) => {
     // prepare the existing plan and the dates for the next two weeks
     const lastPlanDate = Object.keys(copiedNutritionPlan).sort().slice(-1)[0];
     console.log('Last date of the plan:' + lastPlanDate)
-    const nextStartDate = moment(lastPlanDate).add(1, 'days').format('YYYY-MM-DD');
+    
+    
+    let nextStartDate = moment(lastPlanDate).add(1, 'days');
+
+// Check if nextStartDate is not a Monday
+if (nextStartDate.day() !== 1) {
+    // If not, set it to the next Monday
+    let daysUntilNextMonday = 1 - nextStartDate.day();
+    if (daysUntilNextMonday <= 0) { // This means it's currently after Monday (e.g. Tuesday, Wednesday, etc.) 
+        daysUntilNextMonday += 7; // This will add 7 days to negative values, effectively getting the number of days until the next Monday
+    }
+    nextStartDate.add(daysUntilNextMonday, 'days');
+}
+
+
+    nextStartDate = nextStartDate.format('YYYY-MM-DD');
     console.log('First date of the new plan:' + nextStartDate)
     const dates = [];
     for (let i = 0; i < 14; i++) {
@@ -220,17 +238,18 @@ export default function Nutrition() {
     // Message to be sent goes here
     const messages = [
       {
-        role: 'system',
-        content: `You are now BodyGenius, a personal fitness super assistant. Your objective is to help your client achieve their fitness goals by creating professional and scientific nutritions plans. Your clients plan is expiring soon and you need to extend it. Here is the current plan for you client: ${existingPlanStr}
-  
-        You are a part of an app and it is essential you follow these instructions EXACTLY for the app to function properly:
-        1. When specifying nutritions always begin with a token !wkst! and end with a token !wknd! , specify the plan in JSON format with stringified date as the key and an array containing objects with title and content properties as content. Here is an example: !wkst!{“YYYY-MM-DD”: [{“title": title for the section, "content": nutrition specifics}], … rest of the dates}!wknd!, for each of the following dates:${dates}.
-  
-        Provide plentiful detail in nutrition plans. Please create another two weeks of nutritions for the specified dates while maintaining the format and style of the existing nutritions.`
-      }
+        role: 'user',
+        content: `I am currently following a nutrition plan, but it expires next week. Can you create another two weeks of my plan? 
+          
+                You are a part of an app and it is essential you follow these instructions EXACTLY for the app to function properly:
+                1. When specifying nutritions always begin with a token !wkst! and end with a token !wknd! , specify the plan in JSON format with stringified date as the key and an array containing objects with title and content properties as content. Here is an example: !wkst!{“YYYY-MM-DD”: [{“title": title for the section, "content": nutrition specifics}], … rest of the dates}!wknd!, for each of the following dates:${dates}.
+          
+                Here is my current nutrition plan that is to be extended: ${existingPlanStr} `
+              }
     ];
   
     try {
+      console.log("Requested plan extension with: " + messages)
       const response = await fetch('https://us-central1-centered-carver-385915.cloudfunctions.net/fitnessChatbot', {
         method: 'POST',
         headers: {
@@ -255,7 +274,7 @@ export default function Nutrition() {
       return data;
   
     } catch (error) {
-      console.log('Error fetching nutrition plan:', error);
+      console.error('Error fetching nutrition plan:', error);
     }
   };
   
@@ -268,7 +287,13 @@ export default function Nutrition() {
       let isGreaterThanSevenDays = moment(lastDate).isAfter(moment().add(7, 'days'));
       if (!isGreaterThanSevenDays) {
         // Fetch and save new nutrition plans
-        await fetchAndSaveNutritionPlans();
+        console.log('Nutrition expiring in a week. Requesting a 2 week extension.')
+        const copiedNutritionPlan = await copyLastTwoWeeksNutritionPlan();
+        if(copiedNutritionPlan && Object.keys(copiedNutritionPlan).length > 0) {
+          await fetchAndSaveNutritionPlans(copiedNutritionPlan);
+        } else {
+          console.log("Could not copy last two week's nutrition plan. Cancelling API call.");
+        }
       }
     } else {
       console.log("No dates found in the database.");
@@ -290,7 +315,8 @@ export default function Nutrition() {
           lastNutritionFetchTime.current = Date.now();
         }
       }
-      // run async function
+
+    // run async function
     fetchData();
   
     // no cleanup function needed
