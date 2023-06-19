@@ -185,10 +185,12 @@ export default function ChatScreen() {
 
           let workoutPlan = await getLastPlan(workoutDb, 'workout_plans');
           let nutritionPlan = await getLastPlan(nutritionDb, 'nutrition_plans');
-          
+
           // Treat empty strings as false
-          workoutPlan = workoutPlan && workoutPlan.trim() !== "" ? workoutPlan : null;
-          nutritionPlan = nutritionPlan && nutritionPlan.trim() !== "" ? nutritionPlan : null;
+          workoutPlan = typeof workoutPlan === 'string' && workoutPlan.trim() !== "" ? workoutPlan : null;
+          nutritionPlan = typeof nutritionPlan === 'string' && nutritionPlan.trim() !== "" ? nutritionPlan : null;
+
+          
           let dataMessage = '';
 
           if (workoutPlan && nutritionPlan) {
@@ -201,11 +203,12 @@ export default function ChatScreen() {
           } else {
             dataMessage = "";
           }
-
+          
+          let mainMessage = ''
           mainMessage = `${dataMessage}\n\n${initialMessage}`;
           loadMessagesFromStorage();
         } catch (error) {
-          console.log(error);
+          console.log("Here comes the error:" + error);
         }
       }
 
