@@ -5,6 +5,7 @@ import moment from 'moment';
 import * as SQLite from 'expo-sqlite';
 import { NutritionContext } from '../NutritionContext';
 import { useFocusEffect } from '@react-navigation/native';
+import { logEvent } from '../firebaseConfig'; 
 
 const nutritionDb = SQLite.openDatabase('nutrition_plan.db');
 
@@ -154,7 +155,7 @@ const copyLastTwoWeeksNutritionPlan = async () => {
     try {
       nutritionPlanObj = JSON.parse(nutritionPlanStr);
     } catch (error) {
-      console.error('Error parsing nutrition plan:', error);
+      console.log('Error parsing nutrition plan:', error);
       return;
     }
 
@@ -198,7 +199,7 @@ const copyLastTwoWeeksNutritionPlan = async () => {
             console.log('Nutrition plan had fewer than 7 days left, it is now updated.');
           },
           (_, error) => {
-            console.error(`Error saving nutrition plan to database:`, error);
+            console.log(`Error saving nutrition plan to database:`, error);
           }
         );
       });
@@ -214,15 +215,15 @@ const copyLastTwoWeeksNutritionPlan = async () => {
     
     let nextStartDate = moment(lastPlanDate).add(1, 'days');
 
-// Check if nextStartDate is not a Monday
-if (nextStartDate.day() !== 1) {
-    // If not, set it to the next Monday
-    let daysUntilNextMonday = 1 - nextStartDate.day();
-    if (daysUntilNextMonday <= 0) { // This means it's currently after Monday (e.g. Tuesday, Wednesday, etc.) 
-        daysUntilNextMonday += 7; // This will add 7 days to negative values, effectively getting the number of days until the next Monday
-    }
-    nextStartDate.add(daysUntilNextMonday, 'days');
-}
+  // Check if nextStartDate is not a Monday
+  if (nextStartDate.day() !== 1) {
+      // If not, set it to the next Monday
+      let daysUntilNextMonday = 1 - nextStartDate.day();
+      if (daysUntilNextMonday <= 0) { // This means it's currently after Monday (e.g. Tuesday, Wednesday, etc.) 
+          daysUntilNextMonday += 7; // This will add 7 days to negative values, effectively getting the number of days until the next Monday
+      }
+      nextStartDate.add(daysUntilNextMonday, 'days');
+  }
 
 
     nextStartDate = nextStartDate.format('YYYY-MM-DD');
@@ -247,7 +248,8 @@ if (nextStartDate.day() !== 1) {
                 Here is my current nutrition plan that is to be extended: ${existingPlanStr} `
               }
     ];
-  
+    
+    logEvent('Requested nutrition plan extension')
     try {
       console.log("Requested plan extension with: " + messages)
       const response = await fetch('https://us-central1-centered-carver-385915.cloudfunctions.net/fitnessChatbot', {
@@ -260,7 +262,8 @@ if (nextStartDate.day() !== 1) {
   
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`API responded with an error: ${errorText}`);
+        const err = (`Nutrition plan extension failed with: ${errorText}`);
+        logEvent(err)
       }
   
       let data = await response.json();
@@ -274,7 +277,8 @@ if (nextStartDate.day() !== 1) {
       return data;
   
     } catch (error) {
-      console.error('Error fetching nutrition plan:', error);
+      const err = ('Nutrition plan extraction failed with:', error);
+      logEvent(err)
     }
   };
   
@@ -352,7 +356,7 @@ if (nextStartDate.day() !== 1) {
           updateNutritionData(false);
     
         } catch (error) {
-          console.error("Error fetching nutrition plan from database:", error);
+          console.log("Error fetching nutrition plan from database:", error);
         }
         const fetchEnd = Date.now();
   

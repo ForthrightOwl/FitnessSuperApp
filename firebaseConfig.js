@@ -1,5 +1,15 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore } from'firebase/firestore';
+import Constants, { ExecutionEnvironment } from 'expo-constants'
+
+// `true` when running in Expo Go.
+const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient
+
+let analytics
+if (!isExpoGo) {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  analytics = require('@react-native-firebase/analytics').default
+}
 
 // Replace the following with your app's Firebase project configuration
 const firebaseConfig = {
@@ -14,3 +24,13 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const firestore = getFirestore(app);
+
+export async function logEvent(event) {
+  if (isExpoGo) {
+    console.log(
+     'Event logged: ' + event
+    )
+  } else {
+    await analytics().logEvent(event)
+  }
+}

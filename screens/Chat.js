@@ -7,6 +7,7 @@ import { WorkoutContext } from '../WorkoutContext';
 import { NutritionContext } from '../NutritionContext';
 import { useFocusEffect } from '@react-navigation/native';
 import { ResetChatContext } from '../ResetChatContext';
+import { logEvent } from '../firebaseConfig'; 
 
 // Initialize the databases
 const workoutDb = SQLite.openDatabase('workout_plan.db');
@@ -47,7 +48,7 @@ const generateDateList = () => {
     startDate.setDate(startDate.getDate() + daysUntilNextMonday);
   }
 
-  endDate.setDate(startDate.getDate() + 13); // Add 2 weeks (14 days) to the current date (start from Monday)
+  endDate.setDate(startDate.getDate() + 14); // Add 2 weeks (14 days) to the current date (start from Monday)
 
   const dateList = [];
 
@@ -95,7 +96,6 @@ export default function ChatScreen() {
 
   const getPlanFromDb = async (db, tableName, startOfWeek, endOfWeek) => {
     return new Promise((resolve, reject) => {
-      const sqlStart = Date.now();
   
       const query = `SELECT * FROM ${tableName} WHERE date >= ? AND date <= ?`;
   
@@ -104,11 +104,6 @@ export default function ChatScreen() {
           query,
           [startOfWeek, endOfWeek],
           (_, { rows }) => {
-            const sqlEnd = Date.now();
-            console.log("SQL execution time: " + (sqlEnd - sqlStart) + "ms");
-  
-            const formatStart = Date.now();
-  
             if (rows._array.length > 0) {
               let plans = rows._array;
               let formattedPlans = {};
@@ -119,9 +114,6 @@ export default function ChatScreen() {
                   content: p.content,
                 }));
               });
-  
-              const formatEnd = Date.now();
-              console.log("Data formatting time: " + (formatEnd - formatStart) + "ms");
   
               resolve(formattedPlans);
             } else {
@@ -189,7 +181,6 @@ export default function ChatScreen() {
           // Treat empty strings as false
           workoutPlan = typeof workoutPlan === 'string' && workoutPlan.trim() !== "" ? workoutPlan : null;
           nutritionPlan = typeof nutritionPlan === 'string' && nutritionPlan.trim() !== "" ? nutritionPlan : null;
-
           
           let dataMessage = '';
 
@@ -204,7 +195,6 @@ export default function ChatScreen() {
             dataMessage = "";
           }
           
-          let mainMessage = ''
           mainMessage = `${dataMessage}\n\n${initialMessage}`;
           loadMessagesFromStorage();
         } catch (error) {
@@ -271,7 +261,7 @@ export default function ChatScreen() {
             name: aiResponse.role,
           },
         };
-  
+
         // Save AI response.
         setMessages(previousMessages => {
           const updatedMessages = GiftedChat.append(previousMessages, aiMessage);
@@ -280,7 +270,7 @@ export default function ChatScreen() {
         });
       }
     } catch (error) {
-      console.error("Error getting AI response: ", error);
+      console.log("Error getting AI response: ", error);
     }
   };  
 
@@ -289,8 +279,8 @@ export default function ChatScreen() {
     const messages = convertFromGiftedChatFormat(currentMessages).reverse();
     messages.push({ role: 'user', content: userInput });
     messages.push({ role: 'system', content: mainMessage }); 
-  
     console.log('Sending messages:', JSON.stringify({ messages }));
+    logEvent('Message sent to the API')
   
     try {
       const response = await fetch('https://us-central1-centered-carver-385915.cloudfunctions.net/fitnessChatbot', {
@@ -304,9 +294,11 @@ export default function ChatScreen() {
       if (!response.ok) {
         const errorText = await response.text();
         if (errorText === "upstream request timeout") {
+          logEvent('API response failed due to an upstream request timeout.')
           return 'Oops! We apologize for the inconvenience. Our servers are currently experiencing high traffic, making it difficult to process your request. Please reset your chat history in the settings and try again later. We appreciate your patience and look forward to assisting you soon. Keep up the great work on your fitness journey!';
         } else {
-          throw new Error(`API responded with an error: ${errorText}`);
+          const err = (`API response failed due to: ${errorText}`);
+          logEvent(err)
         }
       }
       
@@ -379,27 +371,27 @@ export default function ChatScreen() {
   
       try {
         let workoutResults = [];
-  for (let {start, end} of workoutTokens) {
-    workoutResults.push(await handleWorkoutPlans(start, end, JSON.parse(JSON.stringify(data))));
-  }
+        for (let {start, end} of workoutTokens) {
+          workoutResults.push(await handleWorkoutPlans(start, end, JSON.parse(JSON.stringify(data))));
+        }
 
-  let nutritionResults = [];
-  for (let {start, end} of nutritionTokens) {
-    nutritionResults.push(await handleNutritionPlans(start, end, JSON.parse(JSON.stringify(data))));
-  }
+        let nutritionResults = [];
+        for (let {start, end} of nutritionTokens) {
+          nutritionResults.push(await handleNutritionPlans(start, end, JSON.parse(JSON.stringify(data))));
+        }
 
-  // Remove processed plans from the content
-  let indicesToRemove = workoutTokens.concat(nutritionTokens);
-  indicesToRemove.sort((a, b) => b.start - a.start);  // Reverse sort to prevent index shifting
+        // Remove processed plans from the content
+        let indicesToRemove = workoutTokens.concat(nutritionTokens);
+        indicesToRemove.sort((a, b) => b.start - a.start);  // Reverse sort to prevent index shifting
 
-  for (let {start, end} of indicesToRemove) {
-    data.content = data.content.slice(0, start) + data.content.slice(end + 7);
-  }
+        for (let {start, end} of indicesToRemove) {
+          data.content = data.content.slice(0, start) + data.content.slice(end + 7);
+        }
 
-  // Reduce newlines to at most two in a row
-  data.content = data.content.replace(/\n{3,}/g, '\n\n');
-  data.content = data.content.replace(":", ".");
-  return data;
+        // Reduce newlines to at most two in a row
+        data.content = data.content.replace(/\n{3,}/g, '\n\n');
+        data.content = data.content.replace(":", ".");
+        return data;
   
       } catch (error) {
         console.log('Error processing incomplete message:', error);
@@ -420,6 +412,7 @@ export default function ChatScreen() {
   const handleWorkoutPlans = async (startIndex, endIndex, data) => {
     // Extract workout plan
     let workoutPlanStr = data.content.slice(startIndex + 7, endIndex).trim();
+    logEvent('Workout plan extraction attempted')
   
     // Ensure that the extracted string is wrapped in curly braces
     if (!workoutPlanStr.startsWith('{')) {
@@ -433,7 +426,8 @@ export default function ChatScreen() {
     try {   
       workoutPlanObj = JSON.parse(workoutPlanStr);
     } catch (error) {
-      console.log('Error parsing workout plan:', error);
+      const err = ('Error parsing workout plan:', error);
+      logEvent(err)
       return;
     }
   
@@ -462,8 +456,7 @@ export default function ChatScreen() {
       // Update the workoutPlanObj to be the updatedWorkoutPlanObj
       workoutPlanObj = updatedWorkoutPlanObj;
   
-      console.log(`Dates needed to be changed. Changed: ${originalDates} to ${newDates}`);
-    }
+      logEvent('Succesful workout plan date change')}
   
     workoutDb.transaction(tx => {
       // Insert the new plans
@@ -475,10 +468,10 @@ export default function ChatScreen() {
           [date, plan],
           (_, resultSet) => {
             updateWorkoutData(true);
-            console.log('New workout plan saved successfully.');
           },
           (_, error) => {
-            console.log(`Error saving workout plan to database:`, error);
+            const err = (`Error saving workout plan to database:`, error);
+            logEvent(err)
           }
         );
       });
@@ -490,6 +483,7 @@ export default function ChatScreen() {
   
   
   const handleNutritionPlans = async (startIndex, endIndex, data) => {
+    logEvent('Nutrition plan extraction attempted')
     // Extract nutrition plan
     let nutritionPlanStr = data.content.slice(startIndex + 7, endIndex).trim();
     // Ensure that the extracted string is wrapped in curly braces
@@ -508,8 +502,8 @@ export default function ChatScreen() {
     try {
       nutritionPlanObj = JSON.parse(nutritionPlanStr);
     } catch (error) {
-      console.log('Error parsing nutrition plan:', error);
-      console.log('Here is the string that caused the error:' + nutritionPlanStr)
+      const err = ('Error parsing nutrition plan:', error);
+      logEvent(err)
       return {
         content: "I'm sorry, but we are unable to process your request at this time. Please reset the chat in settings and try again later."
       };
@@ -540,7 +534,7 @@ export default function ChatScreen() {
       // Update the nutritionPlanObj to be the updatedNutritionPlanObj
       nutritionPlanObj = updatedNutritionPlanObj;
   
-      console.log(`Dates needed to be changed. Changed: ${originalDates} to ${newDates}`);
+      logEvent('Succesful nutrition plan date change')
     }
   
     nutritionDb.transaction(tx => {
@@ -556,7 +550,8 @@ export default function ChatScreen() {
             console.log('New nutrition plan saved successfully.');
           },
           (_, error) => {
-            console.log(`Error saving nutrition plan to database:`, error);
+            const err = (`Error saving nutrition plan to database:`, error);
+            logEvent(err)
           }
         );
       });
