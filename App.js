@@ -33,6 +33,7 @@ function MyTabs() {
         <NutritionProvider>
           <NavigationContainer>
             <Tab.Navigator
+              initialRouteName="Chat"
               screenOptions={{
                 cardStyle: { backgroundColor: '#ffffff' },
                 tabBarActiveTintColor: '#ffc65a',
