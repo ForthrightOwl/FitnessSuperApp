@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { GiftedChat, Bubble, InputToolbar, Send } from 'react-native-gifted-chat';
 import { TouchableOpacity, Text, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -602,6 +602,26 @@ React.useEffect(() => {
   }
 }, [isAssistantTyping]);
 
+// Inside your component
+const [typingDots, setTypingDots] = useState('.');
+useEffect(() => {
+  if (isAssistantTyping) {
+    const typingInterval = setInterval(() => {
+      setTypingDots(dots => {
+        if (dots.length < 3) {
+          return dots + '.';
+        } else {
+          return '.';
+        }
+      });
+    }, 700);
+    
+    return () => {
+      clearInterval(typingInterval);
+    };
+  }
+}, [isAssistantTyping]);
+
 return (
   <View style={{ flex: 1 }}>
     <GiftedChat
@@ -663,13 +683,13 @@ return (
         if (longWait) {
           return (
             <View style={{ flexDirection: 'row', alignItems: 'center', margin: 10 }}>
-              <Text>Plan is generating, this might take a few minutes...</Text>
+              <Text>Plan is generating, this might take a few minutes{typingDots}</Text>
             </View>
           );
         } else if (isAssistantTyping) {
           return (
             <View style={{ flexDirection: 'row', alignItems: 'center', margin: 10 }}>
-              <Text style={{ marginLeft: 10 }}>Assistant is typing...</Text>
+              <Text style={{ marginLeft: 10 }}>Assistant is typing{typingDots}</Text>
             </View>
           );
         }
