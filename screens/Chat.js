@@ -78,9 +78,14 @@ const initialBGMessage = `Hey there! I'm BodyGenius, your personal fitness super
 
 export default function ChatScreen() {
   const { resetChat, setResetChat } = useContext(ResetChatContext);
+  const [lastMessageTimestamp, setLastMessageTimestamp] = useState(Date.now());
 
   useFocusEffect(
     React.useCallback(() => {
+      const twoHours = 2 * 60 * 60 * 1000; // Time in milliseconds
+      if (Date.now() - lastMessageTimestamp > twoHours) {
+        resetChatHistory();
+      }
       if (resetChat) {
         resetChatHistory();
         setResetChat(false);
@@ -238,6 +243,7 @@ export default function ChatScreen() {
       role: 'user',
       content: newMessages[0].text,
     };
+    setLastMessageTimestamp(Date.now());
   
     // Save user message immediately.
     setMessages(previousMessages => {
