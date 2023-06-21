@@ -1,3 +1,4 @@
+import React, { useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer } from '@react-navigation/native';
@@ -7,8 +8,9 @@ import Nutrition from './screens/Nutrition';
 import ChatScreen from './screens/Chat';
 import Tracking from './screens/Tracking';
 import Settings from './screens/Settings';
-import { WorkoutProvider } from './WorkoutContext'; 
-import { NutritionProvider } from './NutritionContext'; 
+import SubscriptionScreen from './screens/Subscribe';
+import { WorkoutProvider } from './WorkoutContext';
+import { NutritionProvider } from './NutritionContext';
 import { ResetProvider } from './ResetChatContext';
 import Toast from 'react-native-toast-message';
 import { Dimensions } from 'react-native';
@@ -22,7 +24,6 @@ const REFERENCE_HEIGHT = 844;
 
 export const getRelativeWidth = (size) => (DEVICE_WIDTH * size) / REFERENCE_WIDTH;
 export const getRelativeHeight = (size) => (DEVICE_HEIGHT * size) / REFERENCE_HEIGHT;
-
 
 const Tab = createBottomTabNavigator();
 
@@ -44,8 +45,8 @@ function MyTabs() {
                 tabBarStyle: [
                   {
                     display: 'flex',
-                    backgroundColor:'#2f4f4f',
-                    paddingTop:3,
+                    backgroundColor: '#2f4f4f',
+                    paddingTop: 3,
                   },
                   null,
                 ],
@@ -55,8 +56,8 @@ function MyTabs() {
                 name="Workout"
                 component={Workout}
                 options={{
-                  headerTitle:"",
-                  headerStatusBarHeight:0,
+                  headerTitle: '',
+                  headerStatusBarHeight: 0,
                   tabBarIcon: ({ color, size }) => (
                     <Ionicons name="barbell-outline" size={getRelativeWidth(30)} color={color} />
                   ),
@@ -67,8 +68,8 @@ function MyTabs() {
                 name="Nutrition"
                 component={Nutrition}
                 options={{
-                  headerTitle:"",
-                  headerStatusBarHeight:0,
+                  headerTitle: '',
+                  headerStatusBarHeight: 0,
                   tabBarIcon: ({ color, size }) => (
                     <Ionicons name="restaurant-outline" size={getRelativeWidth(30)} color={color} />
                   ),
@@ -79,8 +80,8 @@ function MyTabs() {
                 name="Chat"
                 component={ChatScreen}
                 options={{
-                  headerTitle:"",
-                  headerStatusBarHeight:0,
+                  headerTitle: '',
+                  headerStatusBarHeight: 0,
                   tabBarIcon: ({ color, size }) => (
                     <Ionicons name="chatbox-ellipses-outline" size={getRelativeWidth(30)} color={color} />
                   ),
@@ -91,8 +92,8 @@ function MyTabs() {
                 name="Tracking"
                 component={Tracking}
                 options={{
-                  headerTitle:"",
-                  headerStatusBarHeight:0,
+                  headerTitle: '',
+                  headerStatusBarHeight: 0,
                   tabBarIcon: ({ color, size }) => (
                     <Ionicons name="bar-chart-outline" size={getRelativeWidth(30)} color={color} />
                   ),
@@ -103,8 +104,8 @@ function MyTabs() {
                 name="Settings"
                 component={Settings}
                 options={{
-                  headerTitle:"",
-                  headerStatusBarHeight:0,
+                  headerTitle: '',
+                  headerStatusBarHeight: 0,
                   tabBarIcon: ({ color, size }) => (
                     <Ionicons name="settings-outline" size={getRelativeWidth(30)} color={color} />
                   ),
@@ -127,9 +128,15 @@ const styles = StyleSheet.create({
 });
 
 export default function App() {
+  const [subscribed, setSubscribed] = useState(false);
+
   return (
     <View style={styles.container}>
-      <MyTabs />
+      {subscribed ? (
+        <MyTabs />
+      ) : (
+        <SubscriptionScreen setSubscribed={setSubscribed} />
+      )}
       <Toast />
     </View>
   );
