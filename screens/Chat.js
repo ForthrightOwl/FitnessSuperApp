@@ -231,7 +231,7 @@ export default function ChatScreen() {
         { role: 'assistant', content: initialBGMessage },
       ];
       setMessages(convertToGiftedChatFormat(initialMessages)); 
-      AsyncStorage.setItem('chatHistory', JSON.stringify([ { role: 'system', content: mainMessage }, ...initialMessages]));
+      AsyncStorage.setItem('chatHistory', JSON.stringify(initialMessages));
     }
   };
   
