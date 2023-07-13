@@ -1,6 +1,6 @@
 import React, { useState, useContext, useEffect } from 'react';
 import { GiftedChat, Bubble, InputToolbar, Send } from 'react-native-gifted-chat';
-import { TouchableOpacity, Text, View } from 'react-native';
+import { TouchableOpacity, Text, View, KeyboardAvoidingView, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SQLite from 'expo-sqlite';
 import { WorkoutContext } from '../WorkoutContext';
@@ -8,6 +8,7 @@ import { NutritionContext } from '../NutritionContext';
 import { useFocusEffect } from '@react-navigation/native';
 import { ResetChatContext } from '../ResetChatContext';
 import { logEvent } from '../firebaseConfig'; 
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Initialize the databases
 const workoutDb = SQLite.openDatabase('workout_plan.db');
@@ -40,21 +41,26 @@ const generateDateList = () => {
   };
 
   const startDate = new Date();
-  const endDate = new Date();
+  let endDate = new Date();
+  console.log('Date list initialized successfully. Start date:' + startDate + 'End date:' + endDate)
 
   // If today is not Monday, adjust startDate to the next Monday
   if (startDate.getDay() !== 1) {
     const daysUntilNextMonday = ((7 - startDate.getDay()) % 7 + 1) % 7;
     startDate.setDate(startDate.getDate() + daysUntilNextMonday);
   }
+  console.log('Start date adjusted:' + startDate)
 
+  endDate = new Date(startDate.getTime());
   endDate.setDate(startDate.getDate() + 14); // Add 2 weeks (14 days) to the current date (start from Monday)
+  console.log('End date set successfully' + endDate)
 
   const dateList = [];
 
   for (let currentDate = new Date(startDate); currentDate <= endDate; currentDate.setDate(currentDate.getDate() + 1)) {
     dateList.push(formatDate(new Date(currentDate)));
   }
+  console.log('Successful date list generation: ' + dateList)
 
   return dateList;
 };
@@ -62,17 +68,17 @@ const generateDateList = () => {
 
 const dateList = generateDateList();
 
-let initialMessage = `You are BodyGenius, a friendly and supportive personal fitness trainer.
+let initialMessage = `You are Kinergo, a friendly and supportive personal fitness trainer.
 
 Your objective is to help your client achieve their fitness goals by creating professional and diverse non repetitive workouts or nutritional meal plans, and by being a useful resource to answer any fitness related questions. Ask a lot of questions to understand your client and personalize your advice to them. Always ensure you have information regarding your client’s gender, age, experience, goals, schedule preferences and other similar important factors before giving advice. Listen to your clients and tailor your responses to their wishes.
 
-When asked to, write workout plans in the following format: always begin with a token !wkst! and end with a token !wknd! , specify the plan in JSON format with stringified date as the key and an array containing objects with title and content properties as content. Here is an example: !wkst!{“YYYY-MM-DD”: [{“title": title for the section, "content": workout specifics}], … rest of the dates}!wknd!, for each of the following dates:${dateList}. Tell the user to see the workout plan in the workouts tab. Never provide plans longer than two weeks!
+Always write workout plans in the following format: always begin with a token !wkst! and end with a token !wknd! , specify the plan in JSON format with stringified date as the key and an array containing objects with title and content properties as content. Here is an example: !wkst!{“YYYY-MM-DD”: [{“title": title for the section, "content": workout specifics}], … rest of the dates}!wknd!, for each of the following dates:${dateList}. Tell the user to see the workout plan in the workouts tab. Never provide plans longer than two weeks!
 When specifying nutrition or meal plans always begin with a token !ntst! and end with a token !ntnd! , specify the plan in JSON format with stringified date as the key and an array containing objects with title and content properties as content. Here is an example: !ntst!{“YYYY-MM-DD”: [{“title": meal name, "content": meal specifics}], … rest of the dates}!ntnd!, for each of the following dates:${dateList}. Tell the user to see the nutrition plan in the nutrition tab. Never provide plans longer than two weeks!
 This format is necessary for the user to save it into an agenda so make sure you follow it exactly ALWAYS! Wrap the whole plan in the designated start and end token, not individual parts.
 There is a progress tracking screen, so if the client asks about tracking their progress redirect them there.
 
 Provide plentiful detail in workout and nutrition plans. Always encourage your client to exercise their own judgement in regards to their health. When giving exercise form advice, always provide a link to an instructional video. Never give them both plans at once.`
-const initialBGMessage = `Hey there! I'm BodyGenius, your personal fitness super assistant. How can I help you achieve your fitness goals today?`
+const initialBGMessage = `Hey there! I'm Kinergo, your personal fitness super assistant. How can I help you achieve your fitness goals today?`
 
 
 
@@ -286,7 +292,7 @@ export default function ChatScreen() {
     messages.push({ role: 'user', content: userInput });
     messages.push({ role: 'system', content: mainMessage }); 
     console.log('Sending messages:', JSON.stringify({ messages }));
-    logEvent('Message sent to the API')
+    logEvent('Message_sent_to_the_API')
   
     try {
       const response = await fetch('https://us-central1-centered-carver-385915.cloudfunctions.net/fitnessChatbot', {
@@ -300,10 +306,12 @@ export default function ChatScreen() {
       if (!response.ok) {
         const errorText = await response.text();
         if (errorText === "upstream request timeout") {
-          logEvent('API response failed due to an upstream request timeout.')
+          logEvent('API_failed_upstream_request_timeout')
           return 'Oops! We apologize for the inconvenience. Our servers are currently experiencing high traffic, making it difficult to process your request. Please reset your chat history in the settings and try again later. We appreciate your patience and look forward to assisting you soon. Keep up the great work on your fitness journey!';
         } else {
-          const err = (`API response failed due to: ${errorText}`);
+          let err = (`API_failed_${errorText}`);
+          err = err.replace(/ /g, '_');
+          err = err.slice(0, 40)
           logEvent(err)
         }
       }
@@ -391,7 +399,9 @@ export default function ChatScreen() {
         indicesToRemove.sort((a, b) => b.start - a.start);  // Reverse sort to prevent index shifting
 
         for (let {start, end} of indicesToRemove) {
-          data.content = data.content.slice(0, start) + data.content.slice(end + 7);
+          let planType = data.content.slice(start, start + 6) === '!wkst!' ? 'workout' : 'nutrition';
+          let placeholder = `\nThe ${planType} plan has been added to your agenda in the ${planType} tab. \n`;
+          data.content = data.content.slice(0, start) + placeholder + data.content.slice(end + 7);
         }
 
         // Reduce newlines to at most two in a row
@@ -418,7 +428,8 @@ export default function ChatScreen() {
   const handleWorkoutPlans = async (startIndex, endIndex, data) => {
     // Extract workout plan
     let workoutPlanStr = data.content.slice(startIndex + 7, endIndex).trim();
-    logEvent('Workout plan extraction attempted')
+    console.log(workoutPlanStr)
+    logEvent('Workout_plan_extraction_attempted')
   
     // Ensure that the extracted string is wrapped in curly braces
     if (!workoutPlanStr.startsWith('{')) {
@@ -432,7 +443,9 @@ export default function ChatScreen() {
     try {   
       workoutPlanObj = JSON.parse(workoutPlanStr);
     } catch (error) {
-      const err = ('Error parsing workout plan:', error);
+      let err = ('Error_parsing_workout_', error);
+      err = err.replace(/ /g, '_');
+      err = err.slice(0, 40)
       logEvent(err)
       return;
     }
@@ -449,7 +462,10 @@ export default function ChatScreen() {
       const originalDates = [];
       const newDates = [];
       for (const date in workoutPlanObj) {
+        console.log(date);
         const dateObj = new Date(date);
+        console.log('Date succesfully created.')
+        console.log(dateObj)
         const daysDiff = Math.floor((dateObj - new Date(firstDateFromPlan)) / (1000 * 60 * 60 * 24));
         const newDateObj = new Date(firstDateFromList);
         newDateObj.setDate(newDateObj.getDate() + daysDiff);
@@ -461,9 +477,7 @@ export default function ChatScreen() {
       }
       // Update the workoutPlanObj to be the updatedWorkoutPlanObj
       workoutPlanObj = updatedWorkoutPlanObj;
-  
-      logEvent('Succesful workout plan date change')}
-  
+    }
     workoutDb.transaction(tx => {
       // Insert the new plans
       Object.keys(workoutPlanObj).forEach(date => {
@@ -476,7 +490,9 @@ export default function ChatScreen() {
             updateWorkoutData(true);
           },
           (_, error) => {
-            const err = (`Error saving workout plan to database:`, error);
+            let err = (`Error_saving_workout_`, error);
+            err = err.replace(/ /g, '_');
+            err = err.slice(0, 40)
             logEvent(err)
           }
         );
@@ -489,7 +505,7 @@ export default function ChatScreen() {
   
   
   const handleNutritionPlans = async (startIndex, endIndex, data) => {
-    logEvent('Nutrition plan extraction attempted')
+    logEvent('Nutrition_plan_extraction_attempted')
     // Extract nutrition plan
     let nutritionPlanStr = data.content.slice(startIndex + 7, endIndex).trim();
     // Ensure that the extracted string is wrapped in curly braces
@@ -508,7 +524,9 @@ export default function ChatScreen() {
     try {
       nutritionPlanObj = JSON.parse(nutritionPlanStr);
     } catch (error) {
-      const err = ('Error parsing nutrition plan:', error);
+      let err = ('Error_parsing_nutrition_', error);
+      err = err.replace(/ /g, '_');
+      err = err.slice(0, 40)
       logEvent(err)
       return {
         content: "I'm sorry, but we are unable to process your request at this time. Please reset the chat in settings and try again later."
@@ -539,8 +557,6 @@ export default function ChatScreen() {
       }
       // Update the nutritionPlanObj to be the updatedNutritionPlanObj
       nutritionPlanObj = updatedNutritionPlanObj;
-  
-      logEvent('Succesful nutrition plan date change')
     }
   
     nutritionDb.transaction(tx => {
@@ -556,7 +572,9 @@ export default function ChatScreen() {
             console.log('New nutrition plan saved successfully.');
           },
           (_, error) => {
-            const err = (`Error saving nutrition plan to database:`, error);
+            let err = (`Error_saving_nutrition_`, error);
+            err = err.replace(/ /g, '_');
+            err = err.slice(0, 40)
             logEvent(err)
           }
         );
@@ -622,9 +640,13 @@ useEffect(() => {
   }
 }, [isAssistantTyping]);
 
+const insets = useSafeAreaInsets();
+
+
 return (
   <View style={{ flex: 1 }}>
     <GiftedChat
+      bottomOffset={insets.bottom + 40}
       messages={messages}
       onSend={newMessages => onSend(newMessages)}
       user={{

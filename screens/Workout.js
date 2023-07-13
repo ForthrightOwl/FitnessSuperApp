@@ -251,7 +251,7 @@ const copyLastTwoWeeksWorkoutPlan = async () => {
               }
     ];
     
-    logEvent('Requested workout plan extension')
+    logEvent('Requested_workout_plan_extension')
     try {
       console.log("Requested plan extension with: " + messages)
       const response = await fetch('https://us-central1-centered-carver-385915.cloudfunctions.net/fitnessChatbot', {
@@ -264,7 +264,9 @@ const copyLastTwoWeeksWorkoutPlan = async () => {
   
       if (!response.ok) {
         const errorText = await response.text();
-        const err = (`Workout plan extension failed with: ${errorText}`);
+        let err = (`Workout_extension_${errorText}`);
+        err = err.replace(/ /g, '_');
+        err = err.slice(0, 40)
         logEvent(err)
       }
   
@@ -279,7 +281,9 @@ const copyLastTwoWeeksWorkoutPlan = async () => {
       return data;
   
     } catch (error) {
-      const err = ('Workout plan extraction failed with:', error);
+      let err = ('Workout_extraction_', error);
+      err = err.replace(/ /g, '_');
+      err = err.slice(0, 40)
       logEvent(err)
     }
   };

@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "368293760442",
+    "project_id": "bodygenius-9e693",
+    "storage_bucket": "bodygenius-9e693.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:368293760442:android:0085bbc4fee876d2316183",
+        "android_client_info": {
+          "package_name": "com.newHorizon.BodyGenius"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "368293760442-5gucqt1s9kk46gp816tkn53p2gnii44l.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBjkBlHUfXeq6uW5Qx_5DuE84s1I0vlZuw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "368293760442-5gucqt1s9kk46gp816tkn53p2gnii44l.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "368293760442-3j3vgj3vkfavjghq8skv04mlvv58hqd1.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.newHorizon.BodyGenius"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

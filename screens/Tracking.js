@@ -6,7 +6,6 @@ import InputView from './tracking view components/InputView';
 import * as SQLite from 'expo-sqlite';
 
 const screenWidth = Dimensions.get('window').width;
-const screenHeight = Dimensions.get('window').height * 2;
 const db = SQLite.openDatabase('WeightTracker.db');
 
 const Tracking = () => {
@@ -18,7 +17,7 @@ const Tracking = () => {
   };
 
   return (
-    <ScrollView contentContainerStyle={{ flexGrow: 1, minHeight: screenHeight}}>
+    <View style={{flex:1}}>
       <View style={styles.container}>
         <TabView
           navigationState={{
@@ -62,7 +61,7 @@ const Tracking = () => {
           )}
         />
       </View>
-    </ScrollView>
+    </View>
   );
 };  
 

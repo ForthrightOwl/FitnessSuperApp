@@ -249,7 +249,7 @@ const copyLastTwoWeeksNutritionPlan = async () => {
               }
     ];
     
-    logEvent('Requested nutrition plan extension')
+    logEvent('Requested_nutrition_plan_extension')
     try {
       console.log("Requested plan extension with: " + messages)
       const response = await fetch('https://us-central1-centered-carver-385915.cloudfunctions.net/fitnessChatbot', {
@@ -262,7 +262,9 @@ const copyLastTwoWeeksNutritionPlan = async () => {
   
       if (!response.ok) {
         const errorText = await response.text();
-        const err = (`Nutrition plan extension failed with: ${errorText}`);
+        let err = (`Nutrition_extension_${errorText}`);
+        err = err.replace(/ /g, '_');
+        err = err.slice(0, 40)
         logEvent(err)
       }
   
@@ -277,7 +279,9 @@ const copyLastTwoWeeksNutritionPlan = async () => {
       return data;
   
     } catch (error) {
-      const err = ('Nutrition plan extraction failed with:', error);
+      let err = ('Nutrition_extraction_', error);
+      err = err.replace(/ /g, '_');
+      err = err.slice(0, 40)
       logEvent(err)
     }
   };

@@ -26,7 +26,6 @@ const resetDatabase = () => {
   });
 };
 
-
 db.transaction(tx => {
   tx.executeSql(
     'CREATE TABLE IF NOT EXISTS measurements (date TEXT PRIMARY KEY, weight REAL);',
@@ -89,8 +88,6 @@ const InputView = ({ onAddMeasurement }) => {
     setCustomDatesStyles(newCustomDatesStyles);
   };
 
-
-
   return (
     <ScrollView style={styles.scrollView}>
       <View style={styles.container}>
@@ -106,8 +103,10 @@ const InputView = ({ onAddMeasurement }) => {
             keyboardType="numeric"
             value={weight}
             onChangeText={(text) => {
-              if (text === '' || /^\d*\.?\d*$/.test(text)) {
-                setWeight(text);
+              // Replace commas with dots and allow only valid number format
+              if (text === '' || /^\d*[.,]?\d*$/.test(text)) {
+                // Replace comma with dot before setting the weight
+                setWeight(text.replace(',', '.'));
               }
             }}
             placeholder="Enter weight"
@@ -130,9 +129,11 @@ const InputView = ({ onAddMeasurement }) => {
           </View>
         )}
       </View>
-      <TouchableOpacity onPress={resetDatabase} style={styles.resetButton}>
-        <Text style={styles.resetButtonText}>Reset Database</Text>
-      </TouchableOpacity>
+      {!isDatePickerVisible && (
+        <TouchableOpacity onPress={resetDatabase} style={styles.resetButton}>
+          <Text style={styles.resetButtonText}>Reset Database</Text>
+        </TouchableOpacity>
+      )}
     </ScrollView>
   );
 };
@@ -213,13 +214,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   resetButton: {
-    backgroundColor: '#2f4f4f',
+    backgroundColor: '#4f2f2f',
     borderRadius: 10,
     padding: 4,
     marginLeft:10,
     marginTop: 16,
-    alignItems: 'left',
-    alignSelf: 'bottom',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
   },
   resetButtonText: {
     color: '#ffffff',

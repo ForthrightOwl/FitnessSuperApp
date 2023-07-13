@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, ScrollView, Text, StyleSheet } from 'react-native';
 import { AreaChart, LineChart, BarChart, Grid, XAxis, YAxis, Circle } from 'react-native-svg-charts';
 import * as SQLite from 'expo-sqlite';
 import * as shape from 'd3-shape';
@@ -115,7 +115,7 @@ const AnalysisView = ({ measurements }) => {
 
 
   return (
-    <View style={styles.container}>
+    <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.heading}>Weight Tracking</Text>
         <Text style={styles.body}>Track your progress with this line chart that displays your weight changes over time. Monitor your journey and see the positive impact of your efforts as you move closer to your fitness goals.</Text>
       <View style={styles.chartContainer}>
@@ -182,7 +182,7 @@ const AnalysisView = ({ measurements }) => {
                 ))}
             </BarChart>
             <XAxis
-                style={{ position: 'absolute', bottom: -20, left: 0, right: 0 }}
+                style={{ position: 'absolute', bottom: -20, left: 0, right: 0, }}
                 data={chartData}
                 formatLabel={(value, index) => chartLabels[index]}
                 contentInset={{ left: 30, right: 30 }}
@@ -193,7 +193,7 @@ const AnalysisView = ({ measurements }) => {
 </View>
 
       </View>
-    </View>
+    </ScrollView>
   );
 };  
 
@@ -212,7 +212,7 @@ chartContainer: {
   padding: 15,
   borderRadius: 10,
   overflow: 'hidden',
-  marginBottom:15
+  marginBottom:30
 },
 chartWrapper: {
   backgroundColor: '#ffffff',

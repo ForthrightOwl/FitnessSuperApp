@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>368293760442-3j3vgj3vkfavjghq8skv04mlvv58hqd1.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.368293760442-3j3vgj3vkfavjghq8skv04mlvv58hqd1</string>
+	<key>API_KEY</key>
+	<string>AIzaSyCNMenB7z0bRimjoVHPECWARSC86X80NzY</string>
+	<key>GCM_SENDER_ID</key>
+	<string>368293760442</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.newHorizon.BodyGenius</string>
+	<key>PROJECT_ID</key>
+	<string>bodygenius-9e693</string>
+	<key>STORAGE_BUCKET</key>
+	<string>bodygenius-9e693.appspot.com</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:368293760442:ios:de08fa3eb22221f5316183</string>
+</dict>
+</plist>

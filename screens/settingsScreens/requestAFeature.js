@@ -74,7 +74,7 @@ const styles = StyleSheet.create({
     padding: 10,
     borderRadius: 10,
     marginVertical: 5,
-    alignSelf: 'left',
+    alignSelf: 'flex-start',
     justifyContent:'center',
     marginBottom:'30%'
   },

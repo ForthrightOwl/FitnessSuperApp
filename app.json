@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "FitnessSuperApp",
-    "slug": "FitnessSuperApp",
+    "name": "Kinergo",
+    "slug": "Kinergo",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -16,14 +16,16 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "googleServicesFile": "./GoogleService-Info.plist"
+      "googleServicesFile": "./GoogleService-Info.plist",
+      "bundleIdentifier": "com.anonymous.FitnessSuperApp"
     },
     "android": {
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.anonymous.FitnessSuperApp"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -34,12 +36,12 @@
       "@react-native-firebase/perf",
       "@react-native-firebase/crashlytics",
       [
-          "expo-build-properties",
-          {
-              "ios": {
-              "useFrameworks": "static"
-              }
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "static"
           }
+        }
       ]
     ]
   }

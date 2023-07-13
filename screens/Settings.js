@@ -1,6 +1,5 @@
 import React, { useState, useContext } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import PrivacyPolicy from '../screens/settingsScreens/privacyPolicy';
+import { View, Text, StyleSheet, TouchableOpacity, Linking } from 'react-native';
 import RequestFeature from '../screens/settingsScreens/requestAFeature';
 import ReportBug from '../screens/settingsScreens/reportABug';
 import * as SQLite from 'expo-sqlite';
@@ -41,10 +40,22 @@ export default function Settings() {
     setResetChat(true);
   };
 
+  const openURL = () => {
+    Linking.canOpenURL('https://kinergo.app/app-privacypolicy/')
+      .then((supported) => {
+        if (!supported) {
+          console.log("Can't handle URL: ");
+        } else {
+          return Linking.openURL('https://kinergo.app/app-privacypolicy/');
+        }
+      })
+      .catch((err) => console.error('An error occurred', err));
+  };
+
   if (screen === 'Settings') {
     return (
       <View style={styles.container}>
-        <TouchableOpacity style={styles.button} onPress={() => setScreen('PrivacyPolicy')}>
+        <TouchableOpacity style={styles.button} onPress={openURL}>
           <Text style={styles.buttonText}>Privacy Policy</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.button} onPress={() => setScreen('RequestFeature')}>
@@ -61,10 +72,6 @@ export default function Settings() {
         </TouchableOpacity>
       </View>
     );
-  }
-
-  if (screen === 'PrivacyPolicy') {
-    return <PrivacyPolicy goBack={() => setScreen('Settings')} />;
   }
 
   if (screen === 'RequestFeature') {
